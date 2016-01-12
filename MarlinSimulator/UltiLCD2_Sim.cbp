@@ -34,13 +34,16 @@
 			<Add option="-D__AVR_ATmega2560__=1" />
 			<Add option="-DARDUINO=100" />
 			<Add option="-DF_CPU=16000000" />
+			<Add option="-DEXTRUDERS=2" />
+			<Add option="-DTEMP_SENSOR_1=20" />
 			<Add directory="arduino_sim" />
 			<Add directory="avr_sim" />
-			<Add directory="C:/Software/SecretMarlin/UltiLCD2_Sim/" />
+			<Add directory="D:/SDL-1.2.15/include" />
 		</Compiler>
 		<Linker>
 			<Add library="SDLmain" />
 			<Add library="SDL" />
+			<Add directory="D:/SDL-1.2.15/lib" />
 		</Linker>
 		<Unit filename="../Marlin/Configuration.h" />
 		<Unit filename="../Marlin/ConfigurationStore.cpp" />
@@ -87,6 +90,8 @@
 		<Unit filename="../Marlin/fastio.h" />
 		<Unit filename="../Marlin/lifetime_stats.cpp" />
 		<Unit filename="../Marlin/lifetime_stats.h" />
+		<Unit filename="../Marlin/machinesettings.cpp" />
+		<Unit filename="../Marlin/machinesettings.h" />
 		<Unit filename="../Marlin/motion_control.cpp" />
 		<Unit filename="../Marlin/motion_control.h" />
 		<Unit filename="../Marlin/pins.h" />
