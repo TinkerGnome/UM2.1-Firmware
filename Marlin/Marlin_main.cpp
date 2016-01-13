@@ -38,11 +38,15 @@
 #include "cardreader.h"
 #include "watchdog.h"
 #include "ConfigurationStore.h"
+#include "ConfigurationDual.h"
 #include "lifetime_stats.h"
 #include "electronics_test.h"
 #include "language.h"
 #include "pins_arduino.h"
 #include "machinesettings.h"
+#if (EXTRUDERS > 1)
+#include "commandbuffer.h"
+#endif
 
 #if NUM_SERVOS > 0
 #include "Servo.h"
@@ -182,6 +186,8 @@ float extruder_offset[2][EXTRUDERS] = {
 };
 #endif
 uint8_t active_extruder = 0;
+uint8_t tmp_extruder = 0;
+
 uint8_t fanSpeed=0;
 uint8_t fanSpeedPercent=100;
 
@@ -247,8 +253,6 @@ static unsigned long stepper_inactive_time = DEFAULT_STEPPER_DEACTIVE_TIME*1000l
 
 unsigned long starttime=0;
 unsigned long stoptime=0;
-
-static uint8_t tmp_extruder;
 
 
 uint8_t Stopped = false;
@@ -448,6 +452,9 @@ void setup()
 
   // loads data from EEPROM if available else uses defaults (and resets step acceleration rate)
   Config_RetrieveSettings();
+#if (EXTRUDERS > 1)
+  Dual_RetrieveSettings();
+#endif
   lifetime_stats_init();
   tp_init();    // Initialize temperature loop
   plan_init();  // Initialize planner;
@@ -864,7 +871,10 @@ void process_commands()
   unsigned long codenum; //throw away variable
   char *starpos = NULL;
 
-  printing_state = PRINT_STATE_NORMAL;
+  if (printing_state != PRINT_STATE_TOOLCHANGE)
+  {
+    printing_state = PRINT_STATE_NORMAL;
+  }
   if(code_seen('G'))
   {
     switch((int)code_value())
@@ -2338,38 +2348,38 @@ void process_commands()
       SERIAL_ECHO(tmp_extruder);
       SERIAL_ECHOLNPGM(MSG_INVALID_EXTRUDER);
     }
-    else {
-      boolean make_move = false;
-      if(code_seen('F')) {
+    else
+    {
+#if EXTRUDERS > 1
+      bool make_move = false;
+      if(code_seen('F'))
+      {
         make_move = true;
         next_feedrate = code_value();
         if(next_feedrate > 0.0) {
           feedrate = next_feedrate;
         }
       }
-      #if EXTRUDERS > 1
-      if(tmp_extruder != active_extruder) {
-        // Save current position to return to after applying extruder offset
-        memcpy(destination, current_position, sizeof(destination));
-        // Offset extruder (only by XY)
-        int i;
-        for(i = 0; i < 2; i++) {
-           current_position[i] = current_position[i] -
-                                 extruder_offset[i][active_extruder] +
-                                 extruder_offset[i][tmp_extruder];
-        }
-        // Set the new active extruder and position
-        active_extruder = tmp_extruder;
-        plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+      if (changeExtruder(tmp_extruder, true))
+      {
         // Move to the old position if 'F' was in the parameters
-        if(make_move && Stopped == false) {
+        if(make_move && Stopped == false)
+        {
            prepare_move();
         }
       }
-      #endif
       SERIAL_ECHO_START;
       SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
       SERIAL_PROTOCOLLN((int)active_extruder);
+#else
+      if(code_seen('F'))
+      {
+        next_feedrate = code_value();
+        if(next_feedrate > 0.0) {
+          feedrate = next_feedrate;
+        }
+      }
+#endif
     }
   }
   else if (strcmp_P(cmdbuffer[bufindr], PSTR("Electronics_test")) == 0)
@@ -2409,15 +2419,19 @@ void ClearToSend()
 
 void get_coordinates()
 {
+#ifdef FWRETRACT
     bool seen[4]={false,false,false,false};
+#endif
     for(int8_t i=0; i < NUM_AXIS; i++)
     {
         if(code_seen(axis_codes[i]))
         {
             destination[i] = (float)code_value() + (axis_relative_modes[i] || relative_mode)*current_position[i];
+#ifdef FWRETRACT
             seen[i]=true;
+#endif
         }
-        else
+        else if (printing_state != PRINT_STATE_TOOLCHANGE)
         {
             destination[i] = current_position[i]; //Are these else lines really needed?
         }
@@ -2427,7 +2441,7 @@ void get_coordinates()
         next_feedrate = code_value();
         if(next_feedrate > 0.0) feedrate = next_feedrate;
     }
-    #ifdef FWRETRACT
+#ifdef FWRETRACT
     if(autoretract_enabled)
     {
         if( !(seen[X_AXIS] || seen[Y_AXIS] || seen[Z_AXIS]) && seen[E_AXIS])
@@ -2460,7 +2474,7 @@ void get_coordinates()
             }
         }
     }
-    #endif //FWRETRACT
+#endif //FWRETRACT
 }
 
 void get_arc_coordinates()
@@ -2820,3 +2834,87 @@ bool setTargetedHotend(int code){
   return false;
 }
 
+#if (EXTRUDERS > 1)
+bool changeExtruder(uint8_t nextExtruder, bool moveZ)
+{
+    if (nextExtruder == active_extruder)
+    {
+        return false;
+    }
+    // finish planned moves
+    st_synchronize();
+
+    printing_state = PRINT_STATE_TOOLCHANGE;
+
+#ifdef MARK2HEAD
+
+    // Save current position to return to after applying extruder offset
+    float temp_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
+    memcpy(temp_position, current_position, sizeof(temp_position));
+
+    // reset xy offsets
+    for(uint8_t i = 0; i < 2; ++i)
+    {
+       current_position[i] = current_position[i] - extruder_offset[i][active_extruder];
+    }
+
+    // calculate z offset
+    float zoffset = active_extruder ? add_homeing[Z_AXIS]-add_homeing_z2 : add_homeing_z2-add_homeing[Z_AXIS];
+
+    // lower buildplate if necessary
+    if (moveZ && (zoffset < 0.0f))
+    {
+       current_position[Z_AXIS] += zoffset;
+    }
+    plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+
+#ifdef SDSUPPORT
+    // execute toolchange script
+    if (nextExtruder)
+    {
+        cmdBuffer.enqueT1();
+    }
+    else
+    {
+        cmdBuffer.enqueT0();
+    }
+#endif
+    // finish tool change moves
+    st_synchronize();
+
+    // set new extruder xy offsets
+    for(uint8_t i = 0; i < 2; ++i)
+    {
+       current_position[i] = current_position[i] + extruder_offset[i][nextExtruder];
+    }
+
+    // raise buildplate if necessary
+    if (moveZ && (zoffset > 0.0f))
+    {
+       current_position[Z_AXIS] += zoffset;
+       // make_move = true;
+    }
+
+    // Set the new active extruder and position
+    active_extruder = nextExtruder;
+    plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+    memcpy(destination, temp_position, sizeof(destination));
+#else
+    // Save current position to return to after applying extruder offset
+    memcpy(destination, current_position, sizeof(destination));
+
+    // Offset extruder (X, Y)
+    for(uint8_t i = 0; i < 2; ++i)
+    {
+       current_position[i] = current_position[i] -
+                             extruder_offset[i][active_extruder] +
+                             extruder_offset[i][nextExtruder];
+    }
+    // Set the new active extruder and position
+    active_extruder = nextExtruder;
+    plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+#endif
+    printing_state = PRINT_STATE_NORMAL;
+    return true;
+}
+#endif

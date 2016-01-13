@@ -5,6 +5,7 @@
 #include "stepper.h"
 #include "temperature.h"
 #include "language.h"
+#include "commandbuffer.h"
 
 #ifdef SDSUPPORT
 
@@ -457,6 +458,14 @@ void CardReader::checkautostart(bool force)
     if(!cardOK) //fail
       return;
   }
+
+#if (EXTRUDERS > 1)
+  if(!force)
+  {
+    // load command scripts
+    cmdBuffer.initScripts();
+  }
+#endif
 
   char autoname[30];
   sprintf_P(autoname, PSTR("auto%i.g"), lastnr);

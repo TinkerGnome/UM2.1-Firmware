@@ -221,6 +221,8 @@ extern bool retracted;
 extern float retract_length, retract_feedrate, retract_zlift;
 #if EXTRUDERS > 1
 extern float extruder_swap_retract_length;
+extern float extruder_offset[2][EXTRUDERS];
+bool changeExtruder(uint8_t nextExtruder, bool moveZ);
 #endif
 extern float retract_recover_length, retract_recover_feedrate;
 #endif
@@ -236,9 +238,11 @@ extern uint8_t printing_state;
 #define PRINT_STATE_HEATING     3
 #define PRINT_STATE_HEATING_BED 4
 #define PRINT_STATE_HOMING      5
+#define PRINT_STATE_TOOLCHANGE  6
 
-// Handling multiple extruders pins
+// Handling multiple extruders
 extern uint8_t active_extruder;
+extern uint8_t tmp_extruder;
 
 #if EXTRUDERS > 2
   # error Unsupported number of extruders
