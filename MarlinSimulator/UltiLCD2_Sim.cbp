@@ -46,6 +46,8 @@
 			<Add directory="D:/SDL-1.2.15/lib" />
 		</Linker>
 		<Unit filename="../Marlin/Configuration.h" />
+		<Unit filename="../Marlin/ConfigurationDual.cpp" />
+		<Unit filename="../Marlin/ConfigurationDual.h" />
 		<Unit filename="../Marlin/ConfigurationStore.cpp" />
 		<Unit filename="../Marlin/ConfigurationStore.h" />
 		<Unit filename="../Marlin/Configuration_adv.h" />
@@ -75,6 +77,8 @@
 		<Unit filename="../Marlin/UltiLCD2_hi_lib.h" />
 		<Unit filename="../Marlin/UltiLCD2_low_lib.cpp" />
 		<Unit filename="../Marlin/UltiLCD2_low_lib.h" />
+		<Unit filename="../Marlin/UltiLCD2_menu_dual.cpp" />
+		<Unit filename="../Marlin/UltiLCD2_menu_dual.h" />
 		<Unit filename="../Marlin/UltiLCD2_menu_first_run.cpp" />
 		<Unit filename="../Marlin/UltiLCD2_menu_first_run.h" />
 		<Unit filename="../Marlin/UltiLCD2_menu_maintenance.cpp" />
@@ -83,8 +87,12 @@
 		<Unit filename="../Marlin/UltiLCD2_menu_material.h" />
 		<Unit filename="../Marlin/UltiLCD2_menu_print.cpp" />
 		<Unit filename="../Marlin/UltiLCD2_menu_print.h" />
+		<Unit filename="../Marlin/UltiLCD2_menu_utils.cpp" />
+		<Unit filename="../Marlin/UltiLCD2_menu_utils.h" />
 		<Unit filename="../Marlin/cardreader.cpp" />
 		<Unit filename="../Marlin/cardreader.h" />
+		<Unit filename="../Marlin/commandbuffer.cpp" />
+		<Unit filename="../Marlin/commandbuffer.h" />
 		<Unit filename="../Marlin/electronics_test.cpp" />
 		<Unit filename="../Marlin/electronics_test.h" />
 		<Unit filename="../Marlin/fastio.h" />
