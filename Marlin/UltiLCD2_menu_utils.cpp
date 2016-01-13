@@ -304,7 +304,10 @@ void lcd_select_nozzle(menuFunc_t nextMenu, menuFunc_t callbackOnSelect, menuFun
     if (lcd_lib_button_pressed)
     {
         uint8_t index(SELECTED_MAIN_MENU_ITEM());
-        lcd_change_to_menu(nextMenu);
+        if (nextMenu)
+        {
+            lcd_replace_menu(nextMenu, ENCODER_NO_SELECTION);
+        }
         if (index < 2)
         {
             tmp_extruder = index;

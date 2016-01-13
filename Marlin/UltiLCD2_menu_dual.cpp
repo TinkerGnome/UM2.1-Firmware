@@ -6,23 +6,18 @@
 #include "stepper.h"
 #include "language.h"
 #include "machinesettings.h"
+#include "commandbuffer.h"
 #include "UltiLCD2_hi_lib.h"
-// #include "UltiLCD2_gfx.h"
 #include "UltiLCD2_menu_utils.h"
 #include "UltiLCD2_menu_maintenance.h"
 #include "UltiLCD2_menu_dual.h"
 
 void lcd_menu_dual();
 
-static void lcd_menu_return_to_dual()
-{
-    lcd_change_to_menu(lcd_menu_dual);
-}
-
 static void lcd_store_extruderoffset()
 {
     Dual_StoreSettings();
-    lcd_menu_return_to_dual();
+    lcd_change_to_previous_menu();
 }
 
 static void lcd_extruderoffset_x()
@@ -56,7 +51,7 @@ static const menu_t & get_extruderoffset_menuoption(uint8_t nr, menu_t &opt)
     else if (nr == index++)
     {
         // RETURN
-        opt.setData(MENU_NORMAL, lcd_menu_return_to_dual);
+        opt.setData(MENU_NORMAL, lcd_change_to_previous_menu);
     }
     else if (nr == index++)
     {
@@ -235,7 +230,7 @@ static void lcd_switch_extruder()
 {
     if (tmp_extruder != active_extruder)
     {
-//        if ((tmp_extruder && cmdBuffer.hasScriptT1()) || cmdBuffer.hasScriptT0())
+        if ((tmp_extruder && cmdBuffer.hasScriptT1()) || cmdBuffer.hasScriptT0())
         {
             st_synchronize();
 //            if (!(homestate & (HOMESTATE_X | HOMESTATE_Y)))
@@ -249,6 +244,7 @@ static void lcd_switch_extruder()
         SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
         SERIAL_PROTOCOLLN((int)active_extruder);
     }
+    lcd_change_to_menu(previousMenu, previousEncoderPos);
 }
 
 static bool endstop_reached(AxisEnum axis, int8_t direction)
@@ -305,7 +301,7 @@ static bool endstop_reached(AxisEnum axis, int8_t direction)
 
 FORCE_INLINE static void lcd_dual_switch_extruder()
 {
-    lcd_select_nozzle(lcd_menu_dual, lcd_switch_extruder, NULL);
+    lcd_select_nozzle(NULL, lcd_switch_extruder, NULL);
 }
 
 static void lcd_simple_buildplate_quit()
@@ -325,7 +321,7 @@ static void lcd_simple_buildplate_cancel()
     Dual_RetrieveSettings();
 #endif
     lcd_simple_buildplate_quit();
-    lcd_menu_return_to_dual();
+    lcd_change_to_previous_menu();
 }
 
 static void lcd_simple_buildplate_store()
@@ -348,7 +344,7 @@ static void lcd_simple_buildplate_store()
     current_position[Z_AXIS] = 0;
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
     lcd_simple_buildplate_quit();
-    lcd_menu_return_to_dual();
+    lcd_change_to_previous_menu();
 }
 
 static void plan_move(AxisEnum axis, float newPos)
