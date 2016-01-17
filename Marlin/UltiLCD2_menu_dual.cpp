@@ -233,18 +233,19 @@ static void lcd_switch_extruder()
         if ((tmp_extruder && cmdBuffer.hasScriptT1()) || cmdBuffer.hasScriptT0())
         {
             st_synchronize();
-//            if (!(homestate & (HOMESTATE_X | HOMESTATE_Y)))
-//            {
+            if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
+            {
+                // home head
                 enquecommand_P(PSTR("G28 X0 Y0"));
+                cmd_synchronize();
                 st_synchronize();
-//            }
+            }
         }
         changeExtruder(tmp_extruder, false);
         SERIAL_ECHO_START;
         SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
         SERIAL_PROTOCOLLN((int)active_extruder);
     }
-    lcd_change_to_menu(previousMenu, previousEncoderPos);
 }
 
 static bool endstop_reached(AxisEnum axis, int8_t direction)
@@ -476,9 +477,26 @@ static void lcd_prepare_buildplate_adjust()
 #else
     add_homeing[Z_AXIS] = 0;
 #endif
-    st_synchronize();
-    enquecommand_P(PSTR("G28"));
     char buffer[32] = {0};
+    // enquecommand_P(PSTR("G28 Z0 X0 Y0"));
+    if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y | KNOWNPOS_Z)))
+    {
+        // home axis first
+        strcpy_P(buffer, PSTR("G28"));
+        if (!(position_state & KNOWNPOS_X))
+        {
+            strcat_P(buffer, PSTR(" X0"));
+        }
+        if (!(position_state & KNOWNPOS_Y))
+        {
+            strcat_P(buffer, PSTR(" Y0"));
+        }
+        if (!(position_state & KNOWNPOS_Z))
+        {
+            strcat_P(buffer, PSTR(" Z0"));
+        }
+        enquecommand(buffer);
+    }
     sprintf_P(buffer, PSTR("G1 F%i Z%i X%i Y%i"), int(homing_feedrate[0]), 35, AXIS_CENTER_POS(X_AXIS), AXIS_CENTER_POS(Y_AXIS));
     enquecommand(buffer);
     enquecommand_P(PSTR("M84 X0 Y0"));

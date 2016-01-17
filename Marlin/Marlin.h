@@ -92,39 +92,41 @@ FORCE_INLINE void serialprintPGM(const char *str)
   }
 }
 
-
-void get_command();
-void process_commands();
-
+void process_command(const char *strCmd);
 void manage_inactivity();
+
+extern uint8_t position_state;
+#define KNOWNPOS_X 1
+#define KNOWNPOS_Y 2
+#define KNOWNPOS_Z 4
 
 #if defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
   #define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
-  #define disable_x() WRITE(X_ENABLE_PIN,!X_ENABLE_ON)
+  #define disable_x() { WRITE(X_ENABLE_PIN,!X_ENABLE_ON); position_state &= ~KNOWNPOS_X; }
 #else
   #define enable_x() ;
-  #define disable_x() ;
+  #define disable_x()  { position_state &= ~KNOWNPOS_X }
 #endif
 
 #if defined(Y_ENABLE_PIN) && Y_ENABLE_PIN > -1
   #define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
-  #define disable_y() WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON)
+  #define disable_y() { WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON); position_state &= ~KNOWNPOS_Y; }
 #else
   #define enable_y() ;
-  #define disable_y() ;
+  #define disable_y() { position_state &= ~KNOWNPOS_Y }
 #endif
 
 #if defined(Z_ENABLE_PIN) && Z_ENABLE_PIN > -1
   #ifdef Z_DUAL_STEPPER_DRIVERS
     #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ON); }
-    #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); }
+    #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); position_state &= ~KNOWNPOS_Z; }
   #else
     #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
-    #define disable_z() WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON)
+    #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); position_state &= ~KNOWNPOS_Z; }
   #endif
 #else
   #define enable_z() ;
-  #define disable_z() ;
+  #define disable_z() { position_state &= ~KNOWNPOS_Z }
 #endif
 
 #if defined(E0_ENABLE_PIN) && (E0_ENABLE_PIN > -1)
@@ -183,6 +185,7 @@ void enquecommand(const char *cmd); //put an ascii command at the end of the cur
 void enquecommand_P(const char *cmd); //put an ascii command at the end of the current buffer, read from flash
 bool is_command_queued();
 uint8_t commands_queued();
+void cmd_synchronize();
 void prepare_arc_move(char isclockwise);
 void clamp_to_software_endstops(float target[3]);
 

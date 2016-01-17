@@ -12,8 +12,8 @@ class CommandBuffer {
     ~CommandBuffer ();
 
     uint8_t initScripts();
-    FORCE_INLINE uint8_t enqueT0() { return enqueScript(t0); }
-    FORCE_INLINE uint8_t enqueT1() { return enqueScript(t1); }
+    FORCE_INLINE uint8_t processT0() { return processScript(t0); }
+    FORCE_INLINE uint8_t processT1() { return processScript(t1); }
     FORCE_INLINE bool hasScriptT0() { return t0; }
     FORCE_INLINE bool hasScriptT1() { return t1; }
 
@@ -30,7 +30,7 @@ class CommandBuffer {
 
   private:
     void deleteScript(struct t_cmdline *script);
-    uint8_t enqueScript(struct t_cmdline *script);
+    uint8_t processScript(struct t_cmdline *script);
     struct t_cmdline* createScript();
     struct t_cmdline* readScript(const char *filename);
 };
