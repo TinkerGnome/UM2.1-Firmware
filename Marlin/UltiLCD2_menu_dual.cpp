@@ -246,6 +246,7 @@ static void lcd_switch_extruder()
         SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
         SERIAL_PROTOCOLLN((int)active_extruder);
     }
+    lcd_change_to_menu(previousMenu, previousEncoderPos);
 }
 
 static bool endstop_reached(AxisEnum axis, int8_t direction)
@@ -302,7 +303,7 @@ static bool endstop_reached(AxisEnum axis, int8_t direction)
 
 FORCE_INLINE static void lcd_dual_switch_extruder()
 {
-    lcd_select_nozzle(NULL, lcd_switch_extruder, NULL);
+    lcd_select_nozzle(NULL, lcd_switch_extruder, lcd_change_to_previous_menu);
 }
 
 static void lcd_simple_buildplate_quit()
@@ -546,7 +547,7 @@ void lcd_menu_dual()
             lcd_change_to_menu(lcd_menu_simple_buildplate_init, ENCODER_NO_SELECTION);
         }
         else if (IS_SELECTED_SCROLL(3))
-            lcd_change_to_menu(lcd_menu_extruderoffset);
+            lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
     }
     lcd_lib_update_screen();
 }

@@ -87,7 +87,7 @@ struct CommandBuffer::t_cmdline* CommandBuffer::readScript(const char *filename)
         }
         card.closefile();
     }
-    if (!script->str && !script->next)
+    if (script && !script->str && !script->next)
     {
         // no need to buffer empty files
         delete script;

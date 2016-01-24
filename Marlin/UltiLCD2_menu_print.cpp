@@ -12,7 +12,7 @@
 #include "UltiLCD2_menu_material.h"
 #include "UltiLCD2_menu_maintenance.h"
 
-#define HEATUP_POSITION_COMMAND "G1 F12000 X5 Y10"
+#define HEATUP_POSITION_COMMAND "G1 F12000 X5 Y85"
 
 uint8_t lcd_cache[LCD_CACHE_SIZE];
 #define LCD_CACHE_NR_OF_FILES() lcd_cache[(LCD_CACHE_COUNT*(LONG_FILENAME_LENGTH+2))]
@@ -287,7 +287,7 @@ void lcd_sd_menu_details_callback(uint8_t nr)
                                 LCD_DETAIL_CACHE_MATERIAL_TYPE(1)[7] = '\0';
                             }
 #endif
-                            
+
                         }
                     }
                     if (card.errorCode())
@@ -1009,7 +1009,7 @@ static void lcd_menu_print_pause()
             }
 
             char buffer[32];
-            sprintf_P(buffer, PSTR("M601 X5 Y5 Z%i L%i"), zdiff, END_OF_PRINT_RETRACTION);
+            sprintf_P(buffer, PSTR("M601 X5 Y85 Z%i L%i"), zdiff, END_OF_PRINT_RETRACTION);
             enquecommand(buffer);
 
             primed = false;

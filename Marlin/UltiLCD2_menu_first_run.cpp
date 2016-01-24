@@ -14,10 +14,10 @@
 
 #define BED_CENTER_ADJUST_X (X_MAX_POS/2)
 #define BED_CENTER_ADJUST_Y (Y_MAX_LENGTH - 10)
-#define BED_LEFT_ADJUST_X 10
-#define BED_LEFT_ADJUST_Y 20
-#define BED_RIGHT_ADJUST_X (X_MAX_POS - 10)
-#define BED_RIGHT_ADJUST_Y 20
+#define BED_LEFT_ADJUST_X 15
+#define BED_LEFT_ADJUST_Y 80
+#define BED_RIGHT_ADJUST_X (X_MAX_POS - 15)
+#define BED_RIGHT_ADJUST_Y 80
 
 static void lcd_menu_first_run_init_2();
 static void lcd_menu_first_run_init_3();
@@ -427,11 +427,11 @@ static void lcd_menu_first_run_material_select_1()
     if (eeprom_read_byte(EEPROM_MATERIAL_COUNT_OFFSET()) == 1)
     {
         digipot_current(2, motor_current_setting[2]);//Set E motor power to default.
-        
+
         for(uint8_t e=0; e<EXTRUDERS; e++)
             lcd_material_set_material(0, e);
         SET_FIRST_RUN_DONE();
-        
+
         currentMenu = lcd_menu_first_run_print_1;
         return;
     }

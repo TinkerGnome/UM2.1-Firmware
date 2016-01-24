@@ -2882,13 +2882,12 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
     // finish planned moves
     st_synchronize();
 
+    // Save current position to return to after applying extruder offset
+    memcpy(destination, current_position, sizeof(destination));
+
 #ifdef MARK2HEAD
     printing_state = PRINT_STATE_TOOLCHANGE;
     float old_feedrate = feedrate;
-
-    // Save current position to return to after applying extruder offset
-    float temp_position[NUM_AXIS] = { 0.0, 0.0, 0.0, 0.0 };
-    memcpy(temp_position, current_position, sizeof(temp_position));
 
     // reset xy offsets
     for(uint8_t i = 0; i < 2; ++i)
@@ -2916,9 +2915,9 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
     {
         cmdBuffer.processT0();
     }
-#endif
     // finish tool change moves
     st_synchronize();
+#endif
 
     // set new extruder xy offsets
     for(uint8_t i = 0; i < 2; ++i)
@@ -2936,18 +2935,14 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
     // Set the new active extruder and restore position
     active_extruder = nextExtruder;
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-    memcpy(destination, temp_position, sizeof(destination));
+
+    plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], homing_feedrate[X_AXIS], active_extruder);
+    memcpy(current_position, destination, sizeof(current_position));
+
     feedrate = old_feedrate;
-    if (moveZ)
-    {
-        plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], max_feedrate[X_AXIS]*0.7f, active_extruder);
-        memcpy(current_position, destination, sizeof(current_position));
-    }
 
     printing_state = PRINT_STATE_NORMAL;
 #else
-    // Save current position to return to after applying extruder offset
-    memcpy(destination, current_position, sizeof(destination));
 
     // Offset extruder (X, Y)
     for(uint8_t i = 0; i < 2; ++i)
