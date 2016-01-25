@@ -8,58 +8,7 @@
 #############################
 
 ##Which version name are we appending to the final archive
-export BUILD_NAME=16.01.1
-
-#############################
-# Support functions
-#############################
-function checkTool
-{
-	if [ -z "`which $1`" ]; then
-		echo "The $1 command must be somewhere in your \$PATH."
-		echo "Fix your \$PATH or install $2"
-		exit 1
-	fi
-}
-
-function downloadURL
-{
-	filename=`basename "$1"`
-	echo "Checking for $filename"
-	if [ ! -f "$filename" ]; then
-		echo "Downloading $1"
-		curl -L -O "$1"
-		if [ $? != 0 ]; then
-			echo "Failed to download $1"
-			exit 1
-		fi
-	fi
-}
-
-function extract
-{
-	echo "Extracting $*"
-	echo "7z x -y $*" >> log.txt
-	7z x -y $* >> log.txt
-	if [ $? != 0 ]; then
-        echo "Failed to extract $*"
-        exit 1
-	fi
-}
-
-function gitClone
-{
-	echo "Cloning $1 into $2"
-	if [ -d $2 ]; then
-		cd $2
-		git clean -dfx
-		git reset --hard
-		git pull
-		cd -
-	else
-		git clone $1 $2
-	fi
-}
+export BUILD_NAME=16.01.2
 
 #############################
 # Actual build script
@@ -76,21 +25,6 @@ fi
 # http://stackoverflow.com/a/246128
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
-
-# checkTool git "git: http://git-scm.com/"
-# checkTool curl "curl: http://curl.haxx.se/"
-
-# checkTool avr-gcc "avr-gcc: http://winavr.sourceforge.net/ "
-# #Check if we have 7zip, needed to extract and packup a bunch of packages for windows.
-# checkTool 7z "7zip: http://www.7-zip.org/"
-# checkTool $MAKE "mingw: http://www.mingw.org/"
-
-# #For building under MacOS we need gnutar instead of tar
-# if [ -z `which gnutar` ]; then
-# 	TAR=tar
-# else
-# 	TAR=gnutar
-# fi
 
 #############################
 # Build the required firmwares
@@ -118,6 +52,8 @@ fi
 # $MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_VERSION=${ARDUINO_VERSION} BUILD_DIR=_Mark2 DEFINES="'STRING_CONFIG_H_AUTHOR=\"Mark2_${BUILD_NAME}\"' TEMP_SENSOR_1=0 EXTRUDERS=1 BABYSTEPPING HEATER_0_MAXTEMP=275 HEATER_1_MAXTEMP=275"
 # sleep 1
 # cp _Mark2/Marlin.hex firmware/Mark2-${BUILD_NAME}.hex
+
+# BOGUS_TEMPERATURE_FAILSAFE_OVERRIDE
 
 $MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_VERSION=${ARDUINO_VERSION} BUILD_DIR=_Mark2Dual clean
 sleep 1
