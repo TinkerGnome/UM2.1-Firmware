@@ -166,7 +166,7 @@
 #define HEATER_0_MAXTEMP 275
 #define HEATER_1_MAXTEMP 275
 #define HEATER_2_MAXTEMP 275
-#define BED_MAXTEMP 200
+#define BED_MAXTEMP 115
 
 //Check if the heater heats up MAX_HEATING_TEMPERATURE_INCREASE within MAX_HEATING_CHECK_MILLIS while the PID was at the maximum.
 // If not, raise an error because most likely the heater is not heating up the temperature sensor. Indicating an issue in the system.
@@ -328,7 +328,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define INVERT_Y_DIR false    // for Mendel set to true, for Orca set to false
 #define INVERT_Z_DIR true     // for Mendel set to false, for Orca set to true
 #define INVERT_E0_DIR true    // for direct drive extruder v9 set to true, for geared extruder set to false
-#define INVERT_E1_DIR true    // for direct drive extruder v9 set to true, for geared extruder set to false
+#define INVERT_E1_DIR false   // for direct drive extruder v9 set to true, for geared extruder set to false
 #define INVERT_E2_DIR true    // for direct drive extruder v9 set to true, for geared extruder set to false
 
 // ENDSTOP SETTINGS:
