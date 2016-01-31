@@ -425,8 +425,7 @@ static void lcd_menu_material_export()
         for(uint8_t nozzle=0; nozzle<MATERIAL_TEMPERATURE_COUNT; nozzle++)
         {
             strcpy_P(buffer, PSTR("temperature_"));
-            ptr = buffer + strlen(buffer);
-            float_to_string(nozzleIndexToNozzleSize(nozzle), ptr, PSTR("="));
+            ptr = float_to_string(nozzleIndexToNozzleSize(nozzle), buffer + strlen(buffer), PSTR("="));
             int_to_string(eeprom_read_word(EEPROM_MATERIAL_EXTRA_TEMPERATURE_OFFSET(n, nozzle)), ptr, PSTR("\n"));
             card.write_string(buffer);
         }
@@ -450,12 +449,12 @@ static void lcd_menu_material_export()
 
         strcpy_P(buffer, PSTR("diameter="));
         ptr = buffer + strlen(buffer);
-        float_to_string(eeprom_read_float(EEPROM_MATERIAL_DIAMETER_OFFSET(n)), ptr, PSTR("\n\n"));
+        float_to_string(eeprom_read_float(EEPROM_MATERIAL_DIAMETER_OFFSET(n)), ptr, PSTR("\n"));
         card.write_string(buffer);
 
         strcpy_P(buffer, PSTR("change_temp="));
         ptr = buffer + strlen(buffer);
-        float_to_string(eeprom_read_word(EEPROM_MATERIAL_CHANGE_TEMPERATURE(n)), ptr, PSTR("\n\n"));
+        float_to_string(eeprom_read_word(EEPROM_MATERIAL_CHANGE_TEMPERATURE(n)), ptr, PSTR("\n"));
         card.write_string(buffer);
 
         strcpy_P(buffer, PSTR("change_wait="));
