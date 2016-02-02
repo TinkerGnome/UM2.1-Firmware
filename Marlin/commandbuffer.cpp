@@ -3,9 +3,16 @@
 #include "cardreader.h"
 #include "Configuration_adv.h"
 
+#include "Marlin.h"
+#include "temperature.h"
+#include "stepper.h"
+#include "lifetime_stats.h"
+#include "UltiLCD2.h"
+
 #define CONFIG_DIR  "config"
 #define FILENAME_T0 "T0"
 #define FILENAME_T1 "T1"
+#define FILENAME_WIPE "wipe"
 
 #if (EXTRUDERS > 1) && defined(SDSUPPORT)
 
@@ -15,6 +22,7 @@ CommandBuffer::~CommandBuffer()
 {
     deleteScript(t0);
     deleteScript(t1);
+    deleteScript(wipe);
 }
 
 uint8_t CommandBuffer::initScripts()
@@ -22,8 +30,10 @@ uint8_t CommandBuffer::initScripts()
     // clear all
     deleteScript(t0);
     deleteScript(t1);
+    deleteScript(wipe);
     t0=0;
     t1=0;
+    wipe=0;
 
     uint8_t cmdCount(0);
 
@@ -47,6 +57,8 @@ uint8_t CommandBuffer::initScripts()
         if ((t0 = readScript(filename))) ++cmdCount;
         strcpy_P(filename, PSTR(FILENAME_T1));
         if ((t1 = readScript(filename))) ++cmdCount;
+        strcpy_P(filename, PSTR(FILENAME_WIPE));
+        if ((wipe = readScript(filename))) ++cmdCount;
     }
     card.setroot();
 
@@ -124,6 +136,12 @@ uint8_t CommandBuffer::processScript(struct t_cmdline *script)
         process_command(script->str);
         script = script->next;
         ++cmdCount;
+        // update loop
+        manage_heater();
+        manage_inactivity();
+        checkHitEndstops();
+        lcd_update();
+        lifetime_stats_tick();
     }
     return cmdCount;
 }

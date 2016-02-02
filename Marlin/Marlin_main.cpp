@@ -2910,12 +2910,18 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
     // calculate z offset
     float zoffset = active_extruder ? add_homeing[Z_AXIS]-add_homeing_z2 : add_homeing_z2-add_homeing[Z_AXIS];
+    float wipeOffset = max(0.0f, 10.0f - current_position[Z_AXIS]);
 
-    // lower buildplate if necessary
-    if (moveZ && (zoffset < 0.0f))
+    if (moveZ)
     {
-       current_position[Z_AXIS] += zoffset;
+        current_position[Z_AXIS] -= wipeOffset;
+        // lower buildplate if necessary
+        if (zoffset < 0.0f)
+        {
+           current_position[Z_AXIS] += zoffset;
+        }
     }
+
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 
 #ifdef SDSUPPORT
@@ -2938,19 +2944,35 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
        current_position[i] = current_position[i] + extruder_offset[i][nextExtruder];
     }
 
-    // raise buildplate if necessary
-    if (moveZ && (zoffset > 0.0f))
+#ifdef SDSUPPORT
+    if (moveZ)
     {
-       current_position[Z_AXIS] += zoffset;
-       // make_move = true;
+        // execute wipe script
+        cmdBuffer.processWipe();
+
+        // finish wipe moves
+        st_synchronize();
+    }
+#endif
+
+    if (moveZ)
+    {
+        // reset wipe offset
+        current_position[Z_AXIS] += wipeOffset;
+        // raise buildplate if necessary
+        if (zoffset > 0.0f)
+        {
+           current_position[Z_AXIS] += zoffset;
+        }
     }
 
     // Set the new active extruder and restore position
     active_extruder = nextExtruder;
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 
-    plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], homing_feedrate[X_AXIS], active_extruder);
-    memcpy(current_position, destination, sizeof(current_position));
+    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], destination[Z_AXIS], current_position[E_AXIS], homing_feedrate[Z_AXIS], active_extruder);
+    current_position[Z_AXIS] = destination[Z_AXIS];
+    // memcpy(current_position, destination, sizeof(current_position));
 
     feedrate = old_feedrate;
 
