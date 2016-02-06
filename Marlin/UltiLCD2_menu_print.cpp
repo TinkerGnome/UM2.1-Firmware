@@ -127,6 +127,7 @@ static void doStartPrint()
 	plan_set_e_position(0);
 	primed = false;
 	position_error = false;
+	uint8_t last_extruder = active_extruder;
 
 	// since we are going to prime the nozzle, forget about any G10/G11 retractions that happened at end of previous print
 	retracted = false;
@@ -168,7 +169,7 @@ static void doStartPrint()
         }
 #endif
     }
-    active_extruder = 0;
+    active_extruder = last_extruder;
     primed = true;
 
     postMenuCheck = checkPrintFinished;
@@ -400,7 +401,7 @@ void lcd_menu_print_select()
             if (!card.filenameIsDir)
             {
                 //Start print
-                active_extruder = 0;
+                // active_extruder = 0;
                 card.openFile(card.filename, true);
                 if (card.isFileOpen() && !is_command_queued())
                 {
@@ -778,11 +779,14 @@ static char* tune_item_callback(uint8_t nr)
         strcpy_P(c, PSTR("Abort"));
     else if (nr == 2)
         strcpy_P(c, PSTR("Speed"));
-    else if (nr == 3)
-        strcpy_P(c, PSTR("Temperature"));
 #if EXTRUDERS > 1
+    else if (nr == 3)
+        strcpy_P(c, PSTR("Temperature 1"));
     else if (nr == 4)
         strcpy_P(c, PSTR("Temperature 2"));
+#else
+    else if (nr == 3)
+        strcpy_P(c, PSTR("Temperature"));
 #endif
 #if TEMP_SENSOR_BED != 0
     else if (nr == 3 + EXTRUDERS)
@@ -790,11 +794,14 @@ static char* tune_item_callback(uint8_t nr)
 #endif
     else if (nr == 3 + BED_MENU_OFFSET + EXTRUDERS)
         strcpy_P(c, PSTR("Fan speed"));
-    else if (nr == 4 + BED_MENU_OFFSET + EXTRUDERS)
-        strcpy_P(c, PSTR("Material flow"));
 #if EXTRUDERS > 1
+    else if (nr == 4 + BED_MENU_OFFSET + EXTRUDERS)
+        strcpy_P(c, PSTR("Material flow 1"));
     else if (nr == 5 + BED_MENU_OFFSET + EXTRUDERS)
         strcpy_P(c, PSTR("Material flow 2"));
+#else
+    else if (nr == 4 + BED_MENU_OFFSET + EXTRUDERS)
+        strcpy_P(c, PSTR("Material flow"));
 #endif
     else if (nr == 4 + BED_MENU_OFFSET + EXTRUDERS * 2)
         strcpy_P(c, PSTR("Retraction"));
@@ -838,7 +845,7 @@ static void tune_item_details_callback(uint8_t nr)
     else if (nr == 5 + BED_MENU_OFFSET + EXTRUDERS)
         c = int_to_string(extrudemultiply[1], c, PSTR("%"));
 #endif
-    else if (nr == 6 + BED_MENU_OFFSET + EXTRUDERS)
+    else if (nr == 5 + BED_MENU_OFFSET + 2*EXTRUDERS)
     {
         c = int_to_string(led_brightness_level, c, PSTR("%"));
         if (led_mode == LED_MODE_ALWAYS_ON ||  led_mode == LED_MODE_WHILE_PRINTING || led_mode == LED_MODE_BLINK_ON_DONE)

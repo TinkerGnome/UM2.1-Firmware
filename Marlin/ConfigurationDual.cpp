@@ -60,7 +60,17 @@ void Dual_RetrieveSettings()
     {
         Dual_ResetDefault();
     }
+    Dual_PrintSettings();
 }
 #endif //EEPROM_SETTINGS
+
+#ifdef EEPROM_CHITCHAT
+void Dual_PrintSettings()
+{  // Always have this function, even with EEPROM_SETTINGS disabled, the current values will be shown
+    SERIAL_ECHO_START;
+    SERIAL_ECHOPAIR("Home offset z2 (mm): ", add_homeing_z2);
+    SERIAL_ECHO_NEWLINE;
+}
+#endif //EEPROM_CHITCHAT
 
 #endif //EXTRUDERS

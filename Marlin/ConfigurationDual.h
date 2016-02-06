@@ -10,6 +10,11 @@ void Dual_ResetDefault();
 
 extern float add_homeing_z2;
 
+#ifdef EEPROM_CHITCHAT
+void Dual_PrintSettings();
+#else
+FORCE_INLINE void Dual_PrintSettings() {}
+#endif
 
 #ifdef EEPROM_SETTINGS
 void Dual_StoreSettings();

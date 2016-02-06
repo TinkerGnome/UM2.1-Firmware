@@ -2472,7 +2472,7 @@ void get_coordinates()
 #ifdef FWRETRACT
     bool seen[4]={false,false,false,false};
 #endif
-    for(int8_t i=0; i < NUM_AXIS; i++)
+    for(int8_t i=0; i < NUM_AXIS; ++i)
     {
         if(code_seen(axis_codes[i]))
         {
@@ -2489,7 +2489,7 @@ void get_coordinates()
     if(code_seen('F'))
     {
         next_feedrate = code_value();
-        if(next_feedrate > 0.0) feedrate = next_feedrate;
+        if(next_feedrate > 0.0f) feedrate = next_feedrate;
     }
 #ifdef FWRETRACT
     if(autoretract_enabled)
@@ -2944,6 +2944,10 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
        current_position[i] = current_position[i] + extruder_offset[i][nextExtruder];
     }
 
+    // Set the new active extruder and restore position
+    active_extruder = nextExtruder;
+    plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+
 #ifdef SDSUPPORT
     if (moveZ)
     {
@@ -2966,10 +2970,8 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         }
     }
 
-    // Set the new active extruder and restore position
-    active_extruder = nextExtruder;
+    // restore z-position
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-
     plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], destination[Z_AXIS], current_position[E_AXIS], homing_feedrate[Z_AXIS], active_extruder);
     current_position[Z_AXIS] = destination[Z_AXIS];
     // memcpy(current_position, destination, sizeof(current_position));
