@@ -8,7 +8,7 @@
 #############################
 
 ##Which version name are we appending to the final archive
-export BUILD_NAME=16.02.3
+export BUILD_NAME=16.02.4
 
 #############################
 # Actual build script
@@ -56,10 +56,10 @@ fi
 # BOGUS_TEMPERATURE_FAILSAFE_OVERRIDE
 
 $MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_VERSION=${ARDUINO_VERSION} BUILD_DIR=_Mark2Dual clean
-sleep 1
+sleep 2
 mkdir _Mark2Dual
 $MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_VERSION=${ARDUINO_VERSION} BUILD_DIR=_Mark2Dual DEFINES="'STRING_CONFIG_H_AUTHOR=\"Mark2_${BUILD_NAME}\"' TEMP_SENSOR_1=20 EXTRUDERS=2 MARK2HEAD BABYSTEPPING HEATER_0_MAXTEMP=275 HEATER_1_MAXTEMP=275 'EEPROM_VERSION=\"V12\"'"
 #cd -
-sleep 1
+sleep 2
 cp _Mark2Dual/Marlin.hex firmware/Mark2-dual-${BUILD_NAME}.hex
 

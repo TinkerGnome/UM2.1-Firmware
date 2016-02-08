@@ -5,10 +5,19 @@
 
 #if (EXTRUDERS > 1)
 
-void Dual_ResetDefault();
+#define DOCK_X_OFFSET      -47.0
+#define DOCK_Y_OFFSET       10.0
 
+#define WIPE_X_OFFSET        5.5
+#define WIPE_Y_OFFSET        4.0
 
 extern float add_homeing_z2;
+extern float dock_position[2];
+extern float wipe_position[2];
+extern float priming_len[2];
+extern float priming_retract[2];
+
+void Dual_ResetDefault();
 
 #ifdef EEPROM_CHITCHAT
 void Dual_PrintSettings();

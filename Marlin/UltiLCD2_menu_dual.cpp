@@ -226,11 +226,11 @@ static void lcd_dual_details(uint8_t nr)
 //    lcd_lib_draw_string_left(BOTTOM_MENU_YPOS, buffer);
 }
 
-static void lcd_switch_extruder()
+void switch_extruder(uint8_t newExtruder)
 {
-    if (tmp_extruder != active_extruder)
+    if (newExtruder != active_extruder)
     {
-        if ((tmp_extruder && cmdBuffer.hasScriptT1()) || cmdBuffer.hasScriptT0())
+        if ((newExtruder && cmdBuffer.hasScriptT1()) || cmdBuffer.hasScriptT0())
         {
             st_synchronize();
             if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
@@ -241,12 +241,17 @@ static void lcd_switch_extruder()
                 st_synchronize();
             }
         }
-        changeExtruder(tmp_extruder, false);
+        changeExtruder(newExtruder, false);
         SERIAL_ECHO_START;
         SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
         SERIAL_PROTOCOLLN((int)active_extruder);
     }
-    lcd_change_to_menu(previousMenu, previousEncoderPos);
+}
+
+static void lcd_switch_extruder()
+{
+    switch_extruder(tmp_extruder);
+    lcd_change_to_previous_menu();
 }
 
 static bool endstop_reached(AxisEnum axis, int8_t direction)

@@ -785,6 +785,11 @@ static void axis_is_at_home(int axis) {
   current_position[axis] = base_home_pos(axis) + add_homeing[axis];
   min_pos[axis] =          base_min_pos(axis);// + add_homeing[axis];
   max_pos[axis] =          base_max_pos(axis);// + add_homeing[axis];
+
+  if (axis <= Y_AXIS)
+  {
+      current_position[axis] += extruder_offset[axis][active_extruder];
+  }
   // keep position state in mind
   position_state |= (1 << axis);
 }
@@ -899,7 +904,7 @@ void process_command(const char *strCmd)
   unsigned long codenum; //throw away variable
   char *starpos = NULL;
 
-  if (printing_state != PRINT_STATE_TOOLCHANGE)
+  if (printing_state < PRINT_STATE_TOOLCHANGE)
   {
     printing_state = PRINT_STATE_NORMAL;
   }
@@ -2441,7 +2446,7 @@ void process_command(const char *strCmd)
     SERIAL_ECHOLNPGM("\"");
   }
 
-  if (printing_state != PRINT_STATE_TOOLCHANGE)
+  if (printing_state < PRINT_STATE_TOOLCHANGE)
   {
     printing_state = PRINT_STATE_NORMAL;
   }
@@ -2481,11 +2486,18 @@ void get_coordinates()
             seen[i]=true;
 #endif
         }
-        else if (printing_state != PRINT_STATE_TOOLCHANGE)
+        else if (printing_state < PRINT_STATE_TOOLCHANGE)
         {
             destination[i] = current_position[i]; //Are these else lines really needed?
         }
     }
+
+    // Mark2-Dual: toolchange moves are complete: back to normal
+    if (printing_state == PRINT_STATE_TOOLREADY)
+    {
+        printing_state = PRINT_STATE_NORMAL;
+    }
+
     if(code_seen('F'))
     {
         next_feedrate = code_value();
@@ -2896,7 +2908,7 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
     st_synchronize();
 
     // Save current position to return to after applying extruder offset
-    memcpy(destination, current_position, sizeof(destination));
+    // memcpy(destination, current_position, sizeof(destination));
 
 #ifdef MARK2HEAD
     printing_state = PRINT_STATE_TOOLCHANGE;
@@ -2905,12 +2917,20 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
     // reset xy offsets
     for(uint8_t i = 0; i < 2; ++i)
     {
-       current_position[i] = current_position[i] - extruder_offset[i][active_extruder];
+       current_position[i] -= extruder_offset[i][active_extruder];
     }
 
     // calculate z offset
     float zoffset = active_extruder ? add_homeing[Z_AXIS]-add_homeing_z2 : add_homeing_z2-add_homeing[Z_AXIS];
-    float wipeOffset = max(0.0f, 10.0f - current_position[Z_AXIS]);
+
+    #define MIN_TOOLCHANGE_ZHOP  2.0f
+    #define MAX_TOOLCHANGE_ZHOP 10.0f
+    float maxDiffZ = Z_HOME_POS + add_homeing[Z_AXIS] - current_position[Z_AXIS];
+    maxDiffZ = constrain(maxDiffZ, 0.0f, MAX_TOOLCHANGE_ZHOP);
+
+    float wipeOffset = min(maxDiffZ, max(MIN_TOOLCHANGE_ZHOP, MAX_TOOLCHANGE_ZHOP - current_position[Z_AXIS]));
+    #undef MIN_TOOLCHANGE_ZHOP
+    #undef MAX_TOOLCHANGE_ZHOP
 
     if (moveZ)
     {
@@ -2941,7 +2961,7 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
     // set new extruder xy offsets
     for(uint8_t i = 0; i < 2; ++i)
     {
-       current_position[i] = current_position[i] + extruder_offset[i][nextExtruder];
+       current_position[i] += extruder_offset[i][nextExtruder];
     }
 
     // Set the new active extruder and restore position
@@ -2972,13 +2992,12 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
     // restore z-position
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], destination[Z_AXIS], current_position[E_AXIS], homing_feedrate[Z_AXIS], active_extruder);
-    current_position[Z_AXIS] = destination[Z_AXIS];
-    // memcpy(current_position, destination, sizeof(current_position));
+//    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], destination[Z_AXIS], current_position[E_AXIS], homing_feedrate[Z_AXIS], active_extruder);
+//    current_position[Z_AXIS] = destination[Z_AXIS];
 
     feedrate = old_feedrate;
 
-    printing_state = PRINT_STATE_NORMAL;
+    printing_state = PRINT_STATE_TOOLREADY;
 #else
 
     // Offset extruder (X, Y)

@@ -241,7 +241,8 @@ extern uint8_t printing_state;
 #define PRINT_STATE_HEATING     3
 #define PRINT_STATE_HEATING_BED 4
 #define PRINT_STATE_HOMING      5
-#define PRINT_STATE_TOOLCHANGE  6
+#define PRINT_STATE_TOOLCHANGE  240
+#define PRINT_STATE_TOOLREADY   241
 
 // Handling multiple extruders
 extern uint8_t active_extruder;

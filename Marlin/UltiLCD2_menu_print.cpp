@@ -12,7 +12,13 @@
 #include "UltiLCD2_menu_material.h"
 #include "UltiLCD2_menu_maintenance.h"
 
-#define HEATUP_POSITION_COMMAND "G1 F12000 X5 Y85"
+#if EXTRUDERS > 1
+#include "UltiLCD2_menu_dual.h"
+#define HEATUP_POSITION_COMMAND "G1 F12000 X5 Y75"
+#else
+#define HEATUP_POSITION_COMMAND "G1 F12000 X5 Y10"
+#endif // EXTRUDERS
+
 
 uint8_t lcd_cache[LCD_CACHE_SIZE];
 #define LCD_CACHE_NR_OF_FILES() lcd_cache[(LCD_CACHE_COUNT*(LONG_FILENAME_LENGTH+2))]
@@ -55,11 +61,8 @@ void lcd_clear_cache()
 static void abortPrint()
 {
     postMenuCheck = NULL;
-    lifetime_stats_print_end();
     doCooldown();
 
-    clear_command_queue();
-    char buffer[32];
     if (card.sdprinting)
     {
     	// we're not printing any more
@@ -69,10 +72,18 @@ static void abortPrint()
     card.pause = false;
     pauseRequested = false;
 
-    enquecommand_P(PSTR("M401"));
+    //enquecommand_P(PSTR("M401"));
+    quickStop();
+    for (uint8_t i=0; i<NUM_AXIS; ++i)
+    {
+        current_position[i] = st_get_position(i)/axis_steps_per_unit[i];
+    }
+
+    clear_command_queue();
 
     if (primed)
     {
+        char buffer[32];
         // set up the end of print retraction
         sprintf_P(buffer, PSTR("G92 E%i"), int(((float)END_OF_PRINT_RETRACTION) / volume_to_filament_length[active_extruder]));
         enquecommand(buffer);
@@ -84,14 +95,22 @@ static void abortPrint()
         primed = false;
     }
 
+#if EXTRUDERS > 1
+    switch_extruder(0);
+#endif // EXTRUDERS
+
     if (current_position[Z_AXIS] > Z_MAX_POS - 30)
     {
         enquecommand_P(PSTR("G28 X0 Y0"));
         enquecommand_P(PSTR("G28 Z0"));
-    }else{
+    }
+    else
+    {
         enquecommand_P(PSTR("G28"));
     }
+
     enquecommand_P(PSTR("M84"));
+    lifetime_stats_print_end();
 }
 
 static void checkPrintFinished()
@@ -127,6 +146,10 @@ static void doStartPrint()
 	plan_set_e_position(0);
 	primed = false;
 	position_error = false;
+
+    // reset active extruder
+	switch_extruder(0);
+
 	uint8_t last_extruder = active_extruder;
 
 	// since we are going to prime the nozzle, forget about any G10/G11 retractions that happened at end of previous print
