@@ -361,11 +361,8 @@ void cmd_synchronize()
           ++bufindr;
           bufindr %= BUFSIZE;
         }
-        manage_heater();
-        manage_inactivity();
+        idle();
         checkHitEndstops();
-        lcd_update();
-        lifetime_stats_tick();
     }
 }
 
@@ -540,11 +537,8 @@ void loop()
     }
   }
   //check heater every n milliseconds
-  manage_heater();
-  manage_inactivity();
+  idle();
   checkHitEndstops();
-  lcd_update();
-  lifetime_stats_tick();
 }
 
 static void get_command()
@@ -899,6 +893,71 @@ static void homeaxis(int axis) {
 }
 #define HOMEAXIS(LETTER) homeaxis(LETTER##_AXIS)
 
+#if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_MAX6675)
+
+static void print_heaterstates()
+{
+    SERIAL_PROTOCOLPGM(" T:");
+    SERIAL_PROTOCOL_F(degHotend(tmp_extruder), 1);
+    SERIAL_PROTOCOLPGM(" /");
+    SERIAL_PROTOCOL_F(degTargetHotend(tmp_extruder), 1);
+
+    #if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
+      SERIAL_PROTOCOLPGM(" B:");
+      SERIAL_PROTOCOL_F(degBed(),1);
+      SERIAL_PROTOCOLPGM(" /");
+      SERIAL_PROTOCOL_F(degTargetBed(),1);
+    #endif //TEMP_BED_PIN
+
+    #if EXTRUDERS > 1
+      for (int8_t e = 0; e < EXTRUDERS; ++e) {
+        SERIAL_PROTOCOLPGM(" T");
+        SERIAL_PROTOCOL(e);
+        SERIAL_PROTOCOLCHAR(':');
+        SERIAL_PROTOCOL_F(degHotend(e), 1);
+        SERIAL_PROTOCOLPGM(" /");
+        SERIAL_PROTOCOL_F(degTargetHotend(e), 1);
+      }
+    #endif
+
+    #if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
+      SERIAL_PROTOCOLPGM(" B@:");
+      SERIAL_PROTOCOL(getHeaterPower(-1));
+    #endif
+
+    SERIAL_PROTOCOLPGM(" @:");
+    SERIAL_PROTOCOL(getHeaterPower(tmp_extruder));
+
+    #if EXTRUDERS > 1
+      for (int8_t e = 0; e < EXTRUDERS; ++e) {
+        SERIAL_PROTOCOLPGM(" @");
+        SERIAL_PROTOCOL(e);
+        SERIAL_PROTOCOLCHAR(':');
+        SERIAL_PROTOCOL(getHeaterPower(e));
+      }
+    #endif
+    SERIAL_EOL;
+}
+
+#endif // TEMP_0_PIN
+
+/**
+ * M105: Read hot end and bed temperature
+ */
+inline void gcode_M105() {
+  if (setTargetedHotend(105)) return;
+
+  #if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_MAX6675)
+    SERIAL_PROTOCOLPGM(MSG_OK);
+    print_heaterstates();
+  #else // !HAS_TEMP_0 && !HAS_TEMP_BED
+    SERIAL_ERROR_START;
+    SERIAL_ERRORLNPGM(MSG_ERR_NO_THERMISTORS);
+  #endif
+
+  SERIAL_EOL;
+}
+
 void process_command(const char *strCmd)
 {
   unsigned long codenum; //throw away variable
@@ -945,10 +1004,7 @@ void process_command(const char *strCmd)
       previous_millis_cmd = millis();
       printing_state = PRINT_STATE_DWELL;
       while(millis()  < codenum ){
-        manage_heater();
-        manage_inactivity();
-        lcd_update();
-        lifetime_stats_tick();
+        idle();
       }
       break;
       #ifdef FWRETRACT
@@ -1194,17 +1250,11 @@ void process_command(const char *strCmd)
       if (codenum > 0){
         codenum += millis();  // keep track of when we started waiting
         while(millis()  < codenum && !lcd_clicked()){
-          manage_heater();
-          manage_inactivity();
-          lcd_update();
-          lifetime_stats_tick();
+          idle();
         }
       }else{
         while(!lcd_clicked()){
-          manage_heater();
-          manage_inactivity();
-          lcd_update();
-          lifetime_stats_tick();
+          idle();
         }
       }
       LCD_MESSAGEPGM(MSG_RESUMING);
@@ -1218,10 +1268,7 @@ void process_command(const char *strCmd)
         card.pause = true;
         while(card.pause)
         {
-          manage_heater();
-          manage_inactivity();
-          lcd_update();
-          lifetime_stats_tick();
+          idle();
         }
     }
     break;
@@ -1377,34 +1424,8 @@ void process_command(const char *strCmd)
       if (code_seen('S')) setTargetBed(code_value());
       break;
     case 105 : // M105
-      if(setTargetedHotend(105)){
-        break;
-        }
-      #if defined(TEMP_0_PIN) && TEMP_0_PIN > -1
-        SERIAL_PROTOCOLPGM("ok T:");
-        SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1);
-        SERIAL_PROTOCOLPGM(" /");
-        SERIAL_PROTOCOL_F(degTargetHotend(tmp_extruder),1);
-        #if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
-          SERIAL_PROTOCOLPGM(" B:");
-          SERIAL_PROTOCOL_F(degBed(),1);
-          SERIAL_PROTOCOLPGM(" /");
-          SERIAL_PROTOCOL_F(degTargetBed(),1);
-        #endif //TEMP_BED_PIN
-      #else
-        SERIAL_ERROR_START;
-        SERIAL_ERRORLNPGM(MSG_ERR_NO_THERMISTORS);
-      #endif
-
-        SERIAL_PROTOCOLPGM(" @:");
-        SERIAL_PROTOCOL(getHeaterPower(tmp_extruder));
-
-        SERIAL_PROTOCOLPGM(" B@:");
-        SERIAL_PROTOCOL(getHeaterPower(-1));
-
-        SERIAL_EOL;
-      return;
-      break;
+      gcode_M105();
+      return; // "ok" already printed
     case 109:
     {// M109 - Wait for extruder heater to reach target.
       if(setTargetedHotend(109)){
@@ -1444,10 +1465,9 @@ void process_command(const char *strCmd)
       #endif //TEMP_RESIDENCY_TIME
           if( (millis() - codenum) > 1000UL )
           { //Print Temp Reading and remaining time every 1 second while heating up/cooling down
-            SERIAL_PROTOCOLPGM("T:");
-            SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1);
-            SERIAL_PROTOCOLPGM(" E:");
-            SERIAL_PROTOCOL((int)tmp_extruder);
+            #if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_MAX6675)
+              print_heaterstates();
+            #endif
             #ifdef TEMP_RESIDENCY_TIME
               SERIAL_PROTOCOLPGM(" W:");
               if(residencyStart > -1)
@@ -1464,10 +1484,7 @@ void process_command(const char *strCmd)
             #endif
             codenum = millis();
           }
-          manage_heater();
-          manage_inactivity();
-          lcd_update();
-          lifetime_stats_tick();
+          idle();
         #ifdef TEMP_RESIDENCY_TIME
             /* start/restart the TEMP_RESIDENCY_TIME timer whenever we reach target temp for the first time
               or when current temp falls outside the hysteresis after target temp was reached */
@@ -1494,20 +1511,13 @@ void process_command(const char *strCmd)
         {
           if(( millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
           {
-            float tt=degHotend(active_extruder);
-            SERIAL_PROTOCOLPGM("T:");
-            SERIAL_PROTOCOL(tt);
-            SERIAL_PROTOCOLPGM(" E:");
-            SERIAL_PROTOCOL((int)active_extruder);
-            SERIAL_PROTOCOLPGM(" B:");
-            SERIAL_PROTOCOL_F(degBed(),1);
-            SERIAL_EOL;
             codenum = millis();
+            #if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_MAX6675)
+              print_heaterstates();
+              SERIAL_EOL;
+            #endif
           }
-          manage_heater();
-          manage_inactivity();
-          lcd_update();
-          lifetime_stats_tick();
+          idle();
         }
         LCD_MESSAGEPGM(MSG_BED_DONE);
         previous_millis_cmd = millis();
@@ -2101,10 +2111,7 @@ void process_command(const char *strCmd)
         uint8_t cnt=0;
         while(!lcd_clicked()){
           cnt++;
-          manage_heater();
-          manage_inactivity();
-          lcd_update();
-          lifetime_stats_tick();
+          idle();
           if(cnt==0)
           {
           #if BEEPER > 0
@@ -2193,10 +2200,7 @@ void process_command(const char *strCmd)
         disable_e1();
         disable_e2();
         while(card.pause){
-          manage_heater();
-          manage_inactivity();
-          lcd_update();
-          lifetime_stats_tick();
+          idle();
         }
 
         plan_set_e_position(current_position[E_AXIS]);
@@ -2708,6 +2712,17 @@ void controllerFan()
   }
 }
 #endif
+
+/**
+ * Standard idle routine keeps the machine alive
+ */
+void idle()
+{
+    manage_heater();
+    manage_inactivity();
+    lcd_update();
+    lifetime_stats_tick();
+}
 
 void manage_inactivity()
 {

@@ -137,11 +137,8 @@ uint8_t CommandBuffer::processScript(struct t_cmdline *script)
         script = script->next;
         ++cmdCount;
         // update loop
-        manage_heater();
-        manage_inactivity();
+        idle();
         checkHitEndstops();
-        lcd_update();
-        lifetime_stats_tick();
     }
     return cmdCount;
 }

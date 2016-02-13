@@ -54,6 +54,7 @@
 #define SERIAL_CHAR(x) MYSERIAL.write(x)
 #define SERIAL_EOL SERIAL_CHAR('\n')
 
+#define SERIAL_PROTOCOLCHAR(x) SERIAL_CHAR(x)
 #define SERIAL_PROTOCOL(x) MYSERIAL.print(x)
 #define SERIAL_PROTOCOL_F(x,y) MYSERIAL.print(x,y)
 #define SERIAL_PROTOCOLPGM(x) serialprintPGM(PSTR(x))
@@ -94,6 +95,7 @@ FORCE_INLINE void serialprintPGM(const char *str)
 
 void process_command(const char *strCmd);
 void manage_inactivity();
+void idle(); // the standard idle routine calls manage_inactivity()
 
 extern uint8_t position_state;
 #define KNOWNPOS_X 1
