@@ -1402,7 +1402,7 @@ void process_command(const char *strCmd)
         SERIAL_PROTOCOLPGM(" B@:");
         SERIAL_PROTOCOL(getHeaterPower(-1));
 
-        SERIAL_PROTOCOL_NEWLINE;
+        SERIAL_EOL;
       return;
       break;
     case 109:
@@ -1460,7 +1460,7 @@ void process_command(const char *strCmd)
                  SERIAL_PROTOCOLLNPGM( "?" );
               }
             #else
-              SERIAL_PROTOCOL_NEWLINE;
+              SERIAL_EOL;
             #endif
             codenum = millis();
           }
@@ -1501,7 +1501,7 @@ void process_command(const char *strCmd)
             SERIAL_PROTOCOL((int)active_extruder);
             SERIAL_PROTOCOLPGM(" B:");
             SERIAL_PROTOCOL_F(degBed(),1);
-            SERIAL_PROTOCOL_NEWLINE;
+            SERIAL_EOL;
             codenum = millis();
           }
           manage_heater();
@@ -1665,7 +1665,7 @@ void process_command(const char *strCmd)
       SERIAL_PROTOCOLPGM("Z:");
       SERIAL_PROTOCOL(float(st_get_position(Z_AXIS))/axis_steps_per_unit[Z_AXIS]);
 
-      SERIAL_PROTOCOL_NEWLINE;
+      SERIAL_EOL;
       break;
     case 120: // M120
       enable_endstops(false) ;
@@ -1815,7 +1815,7 @@ void process_command(const char *strCmd)
          SERIAL_ECHOPGM(",");
          SERIAL_ECHO(extruder_offset[Y_AXIS][tmp_extruder]);
       }
-      SERIAL_ECHO_NEWLINE;
+      SERIAL_EOL;
     }break;
     #endif
     case 220: // M220 S<factor in percent>- set speed factor override percentage
@@ -1860,7 +1860,7 @@ void process_command(const char *strCmd)
           SERIAL_PROTOCOL(servo_index);
           SERIAL_PROTOCOLPGM(": ");
           SERIAL_PROTOCOL(servos[servo_index].read());
-          SERIAL_PROTOCOL_NEWLINE;
+          SERIAL_EOL;
         }
       }
       break;
@@ -1913,7 +1913,7 @@ void process_command(const char *strCmd)
         //Kc does not have scaling applied above, or in resetting defaults
         SERIAL_PROTOCOL(Kc);
         #endif
-        SERIAL_PROTOCOL_NEWLINE;
+        SERIAL_EOL;
       }
       break;
     #endif //PIDTEMP
@@ -1932,7 +1932,7 @@ void process_command(const char *strCmd)
         SERIAL_PROTOCOL(unscalePID_i(bedKi));
         SERIAL_PROTOCOLPGM(" d:");
         SERIAL_PROTOCOL(unscalePID_d(bedKd));
-        SERIAL_PROTOCOL_NEWLINE;
+        SERIAL_EOL;
       }
       break;
     #endif //PIDTEMP

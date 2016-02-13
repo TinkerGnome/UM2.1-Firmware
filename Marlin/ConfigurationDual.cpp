@@ -102,19 +102,19 @@ void Dual_PrintSettings()
 {  // Always have this function, even with EEPROM_SETTINGS disabled, the current values will be shown
     SERIAL_ECHO_START;
     SERIAL_ECHOPAIR("Home offset z2 (mm): ", add_homeing_z2);
-    SERIAL_ECHO_NEWLINE;
+    SERIAL_EOL;
 
     SERIAL_ECHO_START;
     SERIAL_ECHOPGM("Dock position:");
     SERIAL_ECHOPAIR(" X", dock_position[X_AXIS]);
     SERIAL_ECHOPAIR(" Y", dock_position[Y_AXIS]);
-    SERIAL_ECHO_NEWLINE;
+    SERIAL_EOL;
 
     SERIAL_ECHO_START;
     SERIAL_ECHOPGM("Wipe position:");
     SERIAL_ECHOPAIR(" X", wipe_position[X_AXIS]);
     SERIAL_ECHOPAIR(" Y", wipe_position[Y_AXIS]);
-    SERIAL_ECHO_NEWLINE;
+    SERIAL_EOL;
 }
 #endif //EEPROM_CHITCHAT
 
