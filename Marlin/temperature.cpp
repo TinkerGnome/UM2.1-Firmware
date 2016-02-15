@@ -37,6 +37,8 @@
 #include "watchdog.h"
 #include "Sd2Card.h"
 
+#define HEATER_TIMEOUT_1 (1000L * 120L)  // 120 seconds
+#define HEATER_TIMEOUT_2 (1000L * 300L)  // 300 seconds
 
 //===========================================================================
 //=============================public variables============================
@@ -70,6 +72,7 @@ float current_temperature_bed = 0.0;
   unsigned char fanSpeedSoftPwm;
 #endif
 
+unsigned long extruder_lastused[EXTRUDERS];
 
 //===========================================================================
 //=============================private variables============================
@@ -89,7 +92,7 @@ static volatile bool temp_meas_ready = false;
   static float temp_iState_max[EXTRUDERS];
   // static float pid_input[EXTRUDERS];
   // static float pid_output[EXTRUDERS];
-  static bool pid_reset[EXTRUDERS];
+  static uint8_t pid_reset = 0;
 #endif //PIDTEMP
 #ifdef PIDTEMPBED
   //static cannot be external:
@@ -407,6 +410,7 @@ void manage_heater()
 {
   float pid_input;
   float pid_output;
+  int target_temp;
 
   if(temp_meas_ready != true)   //better readability
     return;
@@ -423,26 +427,45 @@ void manage_heater()
 	  min_temp_error(0);
   }
   #endif
-  for(int e = 0; e < EXTRUDERS; e++)
+
+  unsigned long m = millis();
+  extruder_lastused[active_extruder] = m;
+
+  for(int8_t e = 0; e < EXTRUDERS; ++e)
   {
+    target_temp = target_temperature[e];
+    // reduce target temp after timeout
+    if ((extruder_lastused[e] + HEATER_TIMEOUT_2) < m)
+    {
+        target_temp = 0;
+    }
+    else if ((extruder_lastused[e] + HEATER_TIMEOUT_1) < m)
+    {
+        target_temp = target_temp*4/5;
+        target_temp -= target_temp % 10;
+    }
+    else if (e != active_extruder)
+    {
+        target_temp -= target_temp/20;
+    }
 
   #ifdef PIDTEMP
     pid_input = current_temperature[e];
 
     #ifndef PID_OPENLOOP
-        pid_error[e] = target_temperature[e] - pid_input;
+        pid_error[e] = target_temp - pid_input;
         if(pid_error[e] > PID_FUNCTIONAL_RANGE) {
           pid_output = BANG_MAX;
-          pid_reset[e] = true;
+          pid_reset |= (1 << e);
         }
-        else if(pid_error[e] < -PID_FUNCTIONAL_RANGE || target_temperature[e] == 0) {
+        else if(pid_error[e] < -PID_FUNCTIONAL_RANGE || target_temp == 0) {
           pid_output = 0;
-          pid_reset[e] = true;
+          pid_reset |= (1 << e);
         }
         else {
-          if(pid_reset[e] == true) {
+          if(pid_reset & (1 << e)) {
             temp_iState[e] = 0.0;
-            pid_reset[e] = false;
+            pid_reset ^= (1 << e);
           }
           pTerm[e] = Kp * pid_error[e];
           temp_iState[e] += pid_error[e];
@@ -456,7 +479,7 @@ void manage_heater()
         }
         temp_dState[e] = pid_input;
     #else
-          pid_output = constrain(target_temperature[e], 0, PID_MAX);
+          pid_output = constrain(target_temp, 0, PID_MAX);
     #endif //PID_OPENLOOP
     #ifdef PID_DEBUG
     SERIAL_ECHO_START;
@@ -475,7 +498,7 @@ void manage_heater()
     #endif //PID_DEBUG
   #else /* PID off */
     pid_output = 0;
-    if(current_temperature[e] < target_temperature[e]) {
+    if(current_temperature[e] < target_temp) {
       pid_output = PID_MAX;
     }
   #endif
@@ -755,7 +778,7 @@ void tp_init()
 #endif
 
   // Finish init of mult extruder arrays
-  for(int e = 0; e < EXTRUDERS; e++) {
+  for(uint8_t e = 0; e < EXTRUDERS; ++e) {
     // populate with the first value
     maxttemp[e] = maxttemp[0];
 #ifdef PIDTEMP
@@ -766,6 +789,7 @@ void tp_init()
     temp_iState_min_bed = 0.0;
     temp_iState_max_bed = PID_INTEGRAL_DRIVE_MAX / bedKi;
 #endif //PIDTEMPBED
+    extruder_lastused[e] = 0;
   }
 
   #if defined(HEATER_0_PIN) && (HEATER_0_PIN > -1)
@@ -937,7 +961,7 @@ void tp_init()
 void setWatch()
 {
 #ifdef WATCH_TEMP_PERIOD
-  for (int e = 0; e < EXTRUDERS; e++)
+  for (uint8_t e = 0; e < EXTRUDERS; ++e)
   {
     if(degHotend(e) < degTargetHotend(e) - (WATCH_TEMP_INCREASE * 2))
     {

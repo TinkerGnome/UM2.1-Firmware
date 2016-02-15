@@ -14,9 +14,6 @@
 
 #if EXTRUDERS > 1
 #include "UltiLCD2_menu_dual.h"
-#define HEATUP_POSITION_COMMAND "G1 F12000 X5 Y75"
-#else
-#define HEATUP_POSITION_COMMAND "G1 F12000 X5 Y10"
 #endif // EXTRUDERS
 
 

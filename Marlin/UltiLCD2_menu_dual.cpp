@@ -14,7 +14,7 @@
 
 void lcd_menu_dual();
 
-static void lcd_store_extruderoffset()
+static void lcd_store_dualsettings()
 {
     Dual_StoreSettings();
     lcd_change_to_previous_menu();
@@ -46,7 +46,7 @@ static const menu_t & get_extruderoffset_menuoption(uint8_t nr, menu_t &opt)
     if (nr == index++)
     {
         // STORE
-        opt.setData(MENU_NORMAL, lcd_store_extruderoffset);
+        opt.setData(MENU_NORMAL, lcd_store_dualsettings);
     }
     else if (nr == index++)
     {
@@ -124,7 +124,7 @@ static void drawExtruderOffsetSubmenu(uint8_t nr, uint8_t &flags)
         float_to_string(extruder_offset[X_AXIS][1], buffer, PSTR("mm"));
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
                                 , 17
-                                , LCD_CHAR_SPACING*7
+                                , LCD_CHAR_SPACING*8
                                 , LCD_CHAR_HEIGHT
                                 , buffer
                                 , ALIGN_RIGHT | ALIGN_VCENTER
@@ -142,7 +142,7 @@ static void drawExtruderOffsetSubmenu(uint8_t nr, uint8_t &flags)
         float_to_string(extruder_offset[Y_AXIS][1], buffer, PSTR("mm"));
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
                                 , 28
-                                , LCD_CHAR_SPACING*7
+                                , LCD_CHAR_SPACING*8
                                 , LCD_CHAR_HEIGHT
                                 , buffer
                                 , ALIGN_RIGHT | ALIGN_VCENTER
@@ -160,7 +160,7 @@ static void drawExtruderOffsetSubmenu(uint8_t nr, uint8_t &flags)
         float_to_string(add_homeing[Z_AXIS] - add_homeing_z2, buffer, PSTR("mm"));
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
                                 , 39
-                                , LCD_CHAR_SPACING*7
+                                , LCD_CHAR_SPACING*8
                                 , LCD_CHAR_HEIGHT
                                 , buffer
                                 , ALIGN_RIGHT | ALIGN_VCENTER
@@ -187,6 +187,276 @@ static void lcd_menu_extruderoffset()
     lcd_lib_update_screen();
 }
 
+static void lcd_dockposition_x()
+{
+    lcd_tune_value(dock_position[X_AXIS], 0.0f, max_pos[X_AXIS], 0.1f);
+}
+
+static void lcd_dockposition_y()
+{
+    lcd_tune_value(dock_position[Y_AXIS], 0.0f, max_pos[Y_AXIS], 0.1f);
+}
+
+// create menu options for "axis steps/mm"
+static const menu_t & get_dockposition_menuoption(uint8_t nr, menu_t &opt)
+{
+    uint8_t index(0);
+    if (nr == index++)
+    {
+        // STORE
+        opt.setData(MENU_NORMAL, lcd_store_dualsettings);
+    }
+    else if (nr == index++)
+    {
+        // RETURN
+        opt.setData(MENU_NORMAL, lcd_change_to_previous_menu);
+    }
+    else if (nr == index++)
+    {
+        // x pos
+        opt.setData(MENU_INPLACE_EDIT, lcd_dockposition_x, 2);
+    }
+    else if (nr == index++)
+    {
+        // y pos
+        opt.setData(MENU_INPLACE_EDIT, lcd_dockposition_y, 2);
+    }
+    return opt;
+}
+
+static void drawDockPositionSubmenu(uint8_t nr, uint8_t &flags)
+{
+    uint8_t index(0);
+    char buffer[32] = {0};
+    if (nr == index++)
+    {
+        // Store
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Store dock position"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("STORE")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // RETURN
+        LCDMenu::drawMenuBox(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                           , BOTTOM_MENU_YPOS
+                           , 52
+                           , LCD_CHAR_HEIGHT
+                           , flags);
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Click to return"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("RETURN")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // x position
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("dock position x"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(20, PSTR("X"));
+        float_to_string(dock_position[X_AXIS], buffer, PSTR("mm"));
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
+                                , 20
+                                , LCD_CHAR_SPACING*8
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // y position
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("dock position y"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(32, PSTR("Y"));
+        float_to_string(dock_position[Y_AXIS], buffer, PSTR("mm"));
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
+                                , 32
+                                , LCD_CHAR_SPACING*8
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+}
+
+static void lcd_menu_dockposition()
+{
+    lcd_basic_screen();
+    lcd_lib_draw_hline(3, 124, 13);
+
+    menu.process_submenu(get_dockposition_menuoption, 4);
+
+    uint8_t flags = 0;
+    for (uint8_t index=0; index<4; ++index) {
+        menu.drawSubMenu(drawDockPositionSubmenu, index, flags);
+    }
+    if (!(flags & MENU_STATUSLINE))
+    {
+        lcd_lib_draw_string_leftP(5, PSTR("Docking position"));
+    }
+
+    lcd_lib_update_screen();
+}
+
+static void lcd_wipeposition_x()
+{
+    lcd_tune_value(wipe_position[X_AXIS], 0.0f, max_pos[X_AXIS], 0.1f);
+}
+
+static void lcd_wipeposition_y()
+{
+    lcd_tune_value(wipe_position[Y_AXIS], 0.0f, max_pos[Y_AXIS], 0.1f);
+}
+
+// create menu options for "axis steps/mm"
+static const menu_t & get_wipeposition_menuoption(uint8_t nr, menu_t &opt)
+{
+    uint8_t index(0);
+    if (nr == index++)
+    {
+        // STORE
+        opt.setData(MENU_NORMAL, lcd_store_dualsettings);
+    }
+    else if (nr == index++)
+    {
+        // RETURN
+        opt.setData(MENU_NORMAL, lcd_change_to_previous_menu);
+    }
+    else if (nr == index++)
+    {
+        // x pos
+        opt.setData(MENU_INPLACE_EDIT, lcd_wipeposition_x, 2);
+    }
+    else if (nr == index++)
+    {
+        // y pos
+        opt.setData(MENU_INPLACE_EDIT, lcd_wipeposition_y, 2);
+    }
+    return opt;
+}
+
+static void drawWipePositionSubmenu(uint8_t nr, uint8_t &flags)
+{
+    uint8_t index(0);
+    char buffer[32] = {0};
+    if (nr == index++)
+    {
+        // Store
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Store wipe position"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("STORE")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // RETURN
+        LCDMenu::drawMenuBox(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                           , BOTTOM_MENU_YPOS
+                           , 52
+                           , LCD_CHAR_HEIGHT
+                           , flags);
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Click to return"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("RETURN")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // x position
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("wipe position x"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(20, PSTR("X"));
+        float_to_string(wipe_position[X_AXIS], buffer, PSTR("mm"));
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
+                                , 20
+                                , LCD_CHAR_SPACING*8
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // y position
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("wipe position y"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(32, PSTR("Y"));
+        float_to_string(wipe_position[Y_AXIS], buffer, PSTR("mm"));
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
+                                , 32
+                                , LCD_CHAR_SPACING*8
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+}
+
+static void lcd_menu_wipeposition()
+{
+    lcd_basic_screen();
+    lcd_lib_draw_hline(3, 124, 13);
+
+    menu.process_submenu(get_wipeposition_menuoption, 4);
+
+    uint8_t flags = 0;
+    for (uint8_t index=0; index<4; ++index) {
+        menu.drawSubMenu(drawWipePositionSubmenu, index, flags);
+    }
+    if (!(flags & MENU_STATUSLINE))
+    {
+        lcd_lib_draw_string_leftP(5, PSTR("Wipe position"));
+    }
+
+    lcd_lib_update_screen();
+}
+
 static char* lcd_dual_item(uint8_t nr)
 {
     uint8_t index(0);
@@ -201,6 +471,10 @@ static char* lcd_dual_item(uint8_t nr)
     }
     else if (nr == index++)
         strcpy_P(card.longFilename, PSTR("Extruder offset"));
+    else if (nr == index++)
+        strcpy_P(card.longFilename, PSTR("Docking position"));
+    else if (nr == index++)
+        strcpy_P(card.longFilename, PSTR("Wipe position"));
     else
         strcpy_P(card.longFilename, PSTR("???"));
 
@@ -532,7 +806,7 @@ void lcd_menu_simple_buildplate_init()
 
 void lcd_menu_dual()
 {
-    lcd_scroll_menu(PSTR("Dual extrusion"), 4, lcd_dual_item, lcd_dual_details);
+    lcd_scroll_menu(PSTR("Dual extrusion"), 6, lcd_dual_item, lcd_dual_details);
     if (lcd_lib_button_pressed)
     {
         if (IS_SELECTED_SCROLL(0))
@@ -546,6 +820,10 @@ void lcd_menu_dual()
         }
         else if (IS_SELECTED_SCROLL(3))
             lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
+        else if (IS_SELECTED_SCROLL(4))
+            lcd_change_to_menu(lcd_menu_dockposition, MAIN_MENU_ITEM_POS(1));
+        else if (IS_SELECTED_SCROLL(5))
+            lcd_change_to_menu(lcd_menu_wipeposition, MAIN_MENU_ITEM_POS(1));
     }
     lcd_lib_update_screen();
 }

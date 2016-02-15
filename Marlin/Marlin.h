@@ -94,6 +94,8 @@ FORCE_INLINE void serialprintPGM(const char *str)
 }
 
 void process_command(const char *strCmd);
+void process_command_P(const char *strCmd);
+
 void manage_inactivity();
 void idle(); // the standard idle routine calls manage_inactivity()
 

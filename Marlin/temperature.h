@@ -35,6 +35,7 @@ void manage_heater(); //it is critical that this is called periodically.
 // do not use these routines and variables outside of temperature.cpp
 extern int target_temperature[EXTRUDERS];
 extern float current_temperature[EXTRUDERS];
+extern unsigned long extruder_lastused[EXTRUDERS];
 extern int target_temperature_bed;
 extern float current_temperature_bed;
 #ifdef TEMP_SENSOR_1_AS_REDUNDANT

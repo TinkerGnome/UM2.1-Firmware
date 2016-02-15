@@ -1417,7 +1417,11 @@ void process_command(const char *strCmd)
       if(setTargetedHotend(104)){
         break;
       }
-      if (code_seen('S')) setTargetHotend(code_value(), tmp_extruder);
+      if (code_seen('S'))
+      {
+          setTargetHotend(code_value(), tmp_extruder);
+          extruder_lastused[tmp_extruder] = millis();
+      }
       setWatch();
       break;
     case 140: // M140 set bed temp
@@ -1436,7 +1440,11 @@ void process_command(const char *strCmd)
       #ifdef AUTOTEMP
         autotemp_enabled=false;
       #endif
-      if (code_seen('S')) setTargetHotend(code_value(), tmp_extruder);
+      if (code_seen('S'))
+      {
+        setTargetHotend(code_value(), tmp_extruder);
+        extruder_lastused[tmp_extruder] = millis();
+      }
       #ifdef AUTOTEMP
         if (code_seen('S')) autotemp_min=code_value();
         if (code_seen('B')) autotemp_max=code_value();
@@ -1459,9 +1467,11 @@ void process_command(const char *strCmd)
         /* continue to loop until we have reached the target temp
           _and_ until TEMP_RESIDENCY_TIME hasn't passed since we reached it */
         while((residencyStart == -1) ||
-              (residencyStart >= 0 && (((unsigned int) (millis() - residencyStart)) < (TEMP_RESIDENCY_TIME * 1000UL))) ) {
+              (residencyStart >= 0 && (((unsigned int) (millis() - residencyStart)) < (TEMP_RESIDENCY_TIME * 1000UL))) )
+        {
       #else
-        while ( target_direction ? (isHeatingHotend(tmp_extruder)) : (isCoolingHotend(tmp_extruder)&&(CooldownNoWait==false)) ) {
+        while ( target_direction ? (isHeatingHotend(tmp_extruder)) : (isCoolingHotend(tmp_extruder)&&(CooldownNoWait==false)) )
+        {
       #endif //TEMP_RESIDENCY_TIME
           if( (millis() - codenum) > 1000UL )
           { //Print Temp Reading and remaining time every 1 second while heating up/cooling down
@@ -2458,6 +2468,13 @@ void process_command(const char *strCmd)
   ClearToSend();
 }
 
+void process_command_P(const char *strCmd)
+{
+    char cmd[MAX_CMD_SIZE] = {0};
+    strcpy_P(cmd, strCmd);
+    process_command(cmd);
+}
+
 void FlushSerialRequestResend()
 {
   MYSERIAL.flush();
@@ -2913,6 +2930,23 @@ static bool setTargetedHotend(int code)
 }
 
 #if (EXTRUDERS > 1)
+static void reheatNozzle(uint8_t e)
+{
+    unsigned long last_output = millis();
+    while ( isHeatingHotend(e) )
+    {
+    #if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_MAX6675)
+      if( (millis() - last_output) > 1000UL )
+      {
+          //Print Temp Reading every second while heating up
+          print_heaterstates();
+          last_output = millis();
+      }
+    #endif
+      idle();
+    }
+}
+
 bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 {
     if (nextExtruder == active_extruder)
@@ -2986,6 +3020,12 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 #ifdef SDSUPPORT
     if (moveZ)
     {
+        // move to heatup pos
+        process_command_P(PSTR(HEATUP_POSITION_COMMAND));
+
+        // wait for nozzle heatup
+        reheatNozzle(active_extruder);
+
         // execute wipe script
         cmdBuffer.processWipe();
 
