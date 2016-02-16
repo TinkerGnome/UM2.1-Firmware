@@ -603,6 +603,8 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 // Bed leveling wizard configuration
 #define LEVELING_OFFSET 0.1				// Assumed thickness of feeler gauge/paper used in leveling (mm)
 
+#define SERIAL_CONTROL_TIMEOUT 5000
+
 #include "Configuration_adv.h"
 #include "thermistortables.h"
 

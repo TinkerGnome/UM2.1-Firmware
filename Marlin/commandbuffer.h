@@ -12,12 +12,12 @@ class CommandBuffer {
     ~CommandBuffer ();
 
     uint8_t initScripts();
-    FORCE_INLINE uint8_t processT0() { return processScript(t0); }
-    FORCE_INLINE uint8_t processT1() { return processScript(t1); }
-    FORCE_INLINE uint8_t processWipe() { return processScript(wipe); }
-    FORCE_INLINE bool hasScriptT0() { return t0; }
-    FORCE_INLINE bool hasScriptT1() { return t1; }
-    FORCE_INLINE bool hasScriptWipe() { return wipe; }
+    void processT0();
+    void processT1();
+    void processWipe();
+//    FORCE_INLINE bool hasScriptT0() { return t0; }
+//    FORCE_INLINE bool hasScriptT1() { return t1; }
+//    FORCE_INLINE bool hasScriptWipe() { return wipe; }
 
   private:
     // the structure of a single node

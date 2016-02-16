@@ -36,6 +36,7 @@
 #include "temperature.h"
 #include "watchdog.h"
 #include "Sd2Card.h"
+#include "cardreader.h"
 
 #define HEATER_TIMEOUT_1 (1000L * 120L)  // 120 seconds
 #define HEATER_TIMEOUT_2 (1000L * 300L)  // 300 seconds
@@ -434,19 +435,22 @@ void manage_heater()
   for(int8_t e = 0; e < EXTRUDERS; ++e)
   {
     target_temp = target_temperature[e];
-    // reduce target temp after timeout
-    if ((extruder_lastused[e] + HEATER_TIMEOUT_2) < m)
+    if (IS_SD_PRINTING || (m - lastSerialCommandTime < SERIAL_CONTROL_TIMEOUT))
     {
-        target_temp = 0;
-    }
-    else if ((extruder_lastused[e] + HEATER_TIMEOUT_1) < m)
-    {
-        target_temp = target_temp*4/5;
-        target_temp -= target_temp % 10;
-    }
-    else if (e != active_extruder)
-    {
-        target_temp -= target_temp/20;
+        // reduce target temp of inactive nozzle during printing
+        if ((extruder_lastused[e] + HEATER_TIMEOUT_2) < m)
+        {
+            target_temp = 0;
+        }
+        else if ((extruder_lastused[e] + HEATER_TIMEOUT_1) < m)
+        {
+            target_temp = target_temp*4/5;
+            target_temp -= target_temp % 10;
+        }
+        else if (e != active_extruder)
+        {
+            target_temp -= target_temp/20;
+        }
     }
 
   #ifdef PIDTEMP

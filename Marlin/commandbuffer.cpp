@@ -1,20 +1,15 @@
-
 #include "commandbuffer.h"
 #include "cardreader.h"
-#include "Configuration_adv.h"
-
-#include "Marlin.h"
-#include "temperature.h"
+#include "ConfigurationDual.h"
+#include "planner.h"
 #include "stepper.h"
-#include "lifetime_stats.h"
-#include "UltiLCD2.h"
+
+#if (EXTRUDERS > 1) && defined(SDSUPPORT)
 
 #define CONFIG_DIR  "config"
 #define FILENAME_T0 "T0"
 #define FILENAME_T1 "T1"
 #define FILENAME_WIPE "wipe"
-
-#if (EXTRUDERS > 1) && defined(SDSUPPORT)
 
 CommandBuffer cmdBuffer;
 
@@ -142,5 +137,92 @@ uint8_t CommandBuffer::processScript(struct t_cmdline *script)
     }
     return cmdCount;
 }
+
+void CommandBuffer::processT0()
+{
+    if (t0)
+    {
+        processScript(t0);
+    }
+    else
+    {
+        char buffer[30] = {0};
+
+        sprintf_P(buffer, PSTR("G1 X170 Y51 F%i"), 200*60);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 Y%.2f"), dock_position[Y_AXIS]);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 X%.2f F%i"), dock_position[X_AXIS], 50*60);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 Y55 F%i"), 100*60);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 X171 F%i"), 200*60);
+        process_command(buffer);
+
+    }
+}
+
+void CommandBuffer::processT1()
+{
+    if (t1)
+    {
+        processScript(t1);
+    }
+    else
+    {
+        char buffer[30] = {0};
+
+        sprintf_P(buffer, PSTR("G1 X170 Y55 F%i"), 200*60);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 X%.2f"), dock_position[X_AXIS]);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 Y%.2f F%i"), dock_position[Y_AXIS], 100*60);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 X170 F%i"), 50*60);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 Y55 F%i"), 200*60);
+        process_command(buffer);
+
+    }
+}
+
+void CommandBuffer::processWipe()
+{
+    if (wipe)
+    {
+        processScript(wipe);
+    }
+    else
+    {
+        char buffer[30] = {0};
+
+        // undo the toolchange retraction
+        plan_set_e_position((current_position[E_AXIS] - extruder_swap_retract_length) / volume_to_filament_length[active_extruder]);
+        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], END_OF_PRINT_RECOVERY_SPEED, active_extruder);
+
+        // prime nozzle
+        plan_set_e_position((current_position[E_AXIS] - (extruder_swap_retract_length*0.5f)) / volume_to_filament_length[active_extruder]);
+        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 0.7f, active_extruder);
+
+        // wipe moves
+        sprintf_P(buffer, PSTR("G1 X%.2f Y60 F%i"), wipe_position[X_AXIS], 200*60);
+        process_command(buffer);
+        process_command_P(PSTR("G1 Y30"));
+        sprintf_P(buffer, PSTR("G1 Y%.2f F%i"), wipe_position[Y_AXIS]-3.0f, 100*60);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 X%.2f"), wipe_position[X_AXIS]+5.5f);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 X%.2f Y%.2f"), wipe_position[X_AXIS]-5.5f, wipe_position[Y_AXIS]);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 X%.2f Y%.2f"), wipe_position[X_AXIS]+5.5f, wipe_position[Y_AXIS]+4.0f);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 Y35 F%i"), 100*60);
+        process_command(buffer);
+        sprintf_P(buffer, PSTR("G1 Y60 F%i"), 200*60);
+        process_command(buffer);
+
+    }
+}
+
 
 #endif

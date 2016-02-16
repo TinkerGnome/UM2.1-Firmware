@@ -5,7 +5,10 @@
 #include "stepper.h"
 #include "temperature.h"
 #include "language.h"
+
+#if (EXTRUDERS > 1)
 #include "commandbuffer.h"
+#endif
 
 #ifdef SDSUPPORT
 

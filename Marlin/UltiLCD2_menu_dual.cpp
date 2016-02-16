@@ -504,16 +504,13 @@ void switch_extruder(uint8_t newExtruder)
 {
     if (newExtruder != active_extruder)
     {
-        if ((newExtruder && cmdBuffer.hasScriptT1()) || cmdBuffer.hasScriptT0())
+        st_synchronize();
+        if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
         {
+            // home head
+            enquecommand_P(PSTR("G28 X0 Y0"));
+            cmd_synchronize();
             st_synchronize();
-            if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
-            {
-                // home head
-                enquecommand_P(PSTR("G28 X0 Y0"));
-                cmd_synchronize();
-                st_synchronize();
-            }
         }
         changeExtruder(newExtruder, false);
         SERIAL_ECHO_START;
