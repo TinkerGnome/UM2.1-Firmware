@@ -364,8 +364,7 @@ void lcd_menu_advanced_stats()
 static void doFactoryReset()
 {
 #if (EXTRUDERS > 1)
-    Dual_ResetDefault();
-    Dual_StoreSettings();
+    Dual_ClearStorage();
 #endif
 
     //Clear the EEPROM settings so they get read from default.

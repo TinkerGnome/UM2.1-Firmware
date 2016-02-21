@@ -594,11 +594,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 										// (Ultimaker 2 upper limit is 8-10)
 #define PRIMING_HEIGHT 20				// Height at which to perform the priming extrusions
 
-#if EXTRUDERS > 1
-  #define HEATUP_POSITION_COMMAND "G1 F12000 X5 Y60"
-#else
-  #define HEATUP_POSITION_COMMAND "G1 F12000 X5 Y10"
-#endif // EXTRUDERS
+#define HEATUP_POSITION_COMMAND "G1 F12000 X%i Y%i"
 
 // Bed leveling wizard configuration
 #define LEVELING_OFFSET 0.1				// Assumed thickness of feeler gauge/paper used in leveling (mm)

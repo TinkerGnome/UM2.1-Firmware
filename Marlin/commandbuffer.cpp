@@ -4,7 +4,7 @@
 #include "planner.h"
 #include "stepper.h"
 
-#if (EXTRUDERS > 1) && defined(SDSUPPORT)
+#if (EXTRUDERS > 1)
 
 #define CONFIG_DIR  "config"
 #define FILENAME_T0 "T0"
@@ -20,6 +20,7 @@ CommandBuffer::~CommandBuffer()
     deleteScript(wipe);
 }
 
+#ifdef SDSUPPORT
 uint8_t CommandBuffer::initScripts()
 {
     // clear all
@@ -138,13 +139,17 @@ uint8_t CommandBuffer::processScript(struct t_cmdline *script)
     return cmdCount;
 }
 
+#endif // SDSUPPORT
+
 void CommandBuffer::processT0()
 {
+#ifdef SDSUPPORT
     if (t0)
     {
         processScript(t0);
     }
     else
+#endif // SDSUPPORT
     {
         char buffer[30] = {0};
 
@@ -164,11 +169,13 @@ void CommandBuffer::processT0()
 
 void CommandBuffer::processT1()
 {
+#ifdef SDSUPPORT
     if (t1)
     {
         processScript(t1);
     }
     else
+#endif // SDSUPPORT
     {
         char buffer[30] = {0};
 
@@ -188,11 +195,13 @@ void CommandBuffer::processT1()
 
 void CommandBuffer::processWipe()
 {
+#ifdef SDSUPPORT
     if (wipe)
     {
         processScript(wipe);
     }
     else
+#endif // SDSUPPORT
     {
         char buffer[30] = {0};
 
@@ -223,6 +232,5 @@ void CommandBuffer::processWipe()
 
     }
 }
-
 
 #endif

@@ -14,11 +14,31 @@
 
 void lcd_menu_dual();
 
-static void lcd_store_dualsettings()
+static void lcd_store_dualstate()
 {
-    Dual_StoreSettings();
+    Dual_StoreState();
     lcd_change_to_previous_menu();
 }
+
+static void lcd_store_dockposition()
+{
+    Dual_StoreDockPosition();
+    lcd_change_to_previous_menu();
+}
+
+static void lcd_store_wipeposition()
+{
+    Dual_StoreWipePosition();
+    lcd_change_to_previous_menu();
+}
+
+static void lcd_store_extruderoffset()
+{
+    Dual_StoreExtruderOffset();
+    lcd_change_to_previous_menu();
+}
+
+//////////////////
 
 static void lcd_extruderoffset_x()
 {
@@ -46,7 +66,7 @@ static const menu_t & get_extruderoffset_menuoption(uint8_t nr, menu_t &opt)
     if (nr == index++)
     {
         // STORE
-        opt.setData(MENU_NORMAL, lcd_store_dualsettings);
+        opt.setData(MENU_NORMAL, lcd_store_extruderoffset);
     }
     else if (nr == index++)
     {
@@ -187,6 +207,8 @@ static void lcd_menu_extruderoffset()
     lcd_lib_update_screen();
 }
 
+//////////////////
+
 static void lcd_dockposition_x()
 {
     lcd_tune_value(dock_position[X_AXIS], 0.0f, max_pos[X_AXIS], 0.1f);
@@ -204,7 +226,7 @@ static const menu_t & get_dockposition_menuoption(uint8_t nr, menu_t &opt)
     if (nr == index++)
     {
         // STORE
-        opt.setData(MENU_NORMAL, lcd_store_dualsettings);
+        opt.setData(MENU_NORMAL, lcd_store_dockposition);
     }
     else if (nr == index++)
     {
@@ -322,6 +344,8 @@ static void lcd_menu_dockposition()
     lcd_lib_update_screen();
 }
 
+//////////////////
+
 static void lcd_wipeposition_x()
 {
     lcd_tune_value(wipe_position[X_AXIS], 0.0f, max_pos[X_AXIS], 0.1f);
@@ -339,7 +363,7 @@ static const menu_t & get_wipeposition_menuoption(uint8_t nr, menu_t &opt)
     if (nr == index++)
     {
         // STORE
-        opt.setData(MENU_NORMAL, lcd_store_dualsettings);
+        opt.setData(MENU_NORMAL, lcd_store_wipeposition);
     }
     else if (nr == index++)
     {
@@ -457,48 +481,142 @@ static void lcd_menu_wipeposition()
     lcd_lib_update_screen();
 }
 
-static char* lcd_dual_item(uint8_t nr)
+//////////////////
+
+static void lcd_toggle_dual()
+{
+    dual_state ^= DUAL_ENABLED;
+}
+
+static void lcd_toggle_wipe()
+{
+    dual_state ^= DUAL_WIPE;
+}
+
+// create menu options for "axis steps/mm"
+static const menu_t & get_dualstate_menuoption(uint8_t nr, menu_t &opt)
 {
     uint8_t index(0);
     if (nr == index++)
-        strcpy_P(card.longFilename, PSTR("< RETURN"));
-    else if (nr == index++)
-        strcpy_P(card.longFilename, PSTR("Change extruder"));
-    else if (nr == index++)
     {
-        strcpy_P(card.longFilename, PSTR("Adjust Z (nozzle "));
-        int_to_string(active_extruder+1, card.longFilename+strlen(card.longFilename), PSTR(")"));
+        // STORE
+        opt.setData(MENU_NORMAL, lcd_store_dualstate);
     }
     else if (nr == index++)
-        strcpy_P(card.longFilename, PSTR("Extruder offset"));
+    {
+        // RETURN
+        opt.setData(MENU_NORMAL, lcd_change_to_previous_menu);
+    }
     else if (nr == index++)
-        strcpy_P(card.longFilename, PSTR("Docking position"));
+    {
+        // enable dual mode
+        opt.setData(MENU_NORMAL, lcd_toggle_dual);
+    }
     else if (nr == index++)
-        strcpy_P(card.longFilename, PSTR("Wipe position"));
-    else
-        strcpy_P(card.longFilename, PSTR("???"));
-
-    return card.longFilename;
+    {
+        // enable wipe mode
+        opt.setData(MENU_NORMAL, lcd_toggle_wipe);
+    }
+    return opt;
 }
 
-static void lcd_dual_details(uint8_t nr)
+static void drawDualStateSubmenu(uint8_t nr, uint8_t &flags)
 {
-//    char buffer[32] = {0};
-//    buffer[0] = '\0';
-//    if (nr == 4)
-//    {
-//        // extruders swapped?
-//        uint8_t xpos = (swapExtruders() ? LCD_GFX_WIDTH-LCD_CHAR_MARGIN_RIGHT-7*LCD_CHAR_SPACING : LCD_CHAR_MARGIN_LEFT);
-//        lcd_lib_draw_stringP(xpos, BOTTOM_MENU_YPOS, PSTR("PRIMARY"));
-//
-//        xpos = (swapExtruders() ? LCD_CHAR_MARGIN_LEFT : LCD_GFX_WIDTH-LCD_CHAR_MARGIN_RIGHT-6*LCD_CHAR_SPACING);
-//        lcd_lib_draw_stringP(xpos, BOTTOM_MENU_YPOS, PSTR("SECOND"));
-//
-//        lcd_lib_draw_stringP(LCD_GFX_WIDTH/2-LCD_CHAR_MARGIN_RIGHT-LCD_CHAR_SPACING, BOTTOM_MENU_YPOS, PSTR("<->"));
-//        return;
-//    }
-//    lcd_lib_draw_string_left(BOTTOM_MENU_YPOS, buffer);
+    uint8_t index(0);
+    if (nr == index++)
+    {
+        // Store
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Store dual mode"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("STORE")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // RETURN
+        LCDMenu::drawMenuBox(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                           , BOTTOM_MENU_YPOS
+                           , 52
+                           , LCD_CHAR_HEIGHT
+                           , flags);
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Click to return"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("RETURN")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // dual mode
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Dual mode"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(20, PSTR("Dual mode:"));
+        LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*13
+                                , 20
+                                , LCD_CHAR_SPACING*7
+                                , LCD_CHAR_HEIGHT
+                                , IS_DUAL_ENABLED ? PSTR("enabled") : PSTR("off")
+                                , ALIGN_LEFT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // wipe device
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Wipe device"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(32, PSTR("Wipe device:"));
+        LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*13
+                                , 32
+                                , LCD_CHAR_SPACING*7
+                                , LCD_CHAR_HEIGHT
+                                , IS_WIPE_ENABLED ? PSTR("enabled") : PSTR("off")
+                                , ALIGN_LEFT | ALIGN_VCENTER
+                                , flags);
+    }
 }
+
+static void lcd_menu_dualstate()
+{
+    lcd_basic_screen();
+    lcd_lib_draw_hline(3, 124, 13);
+
+    uint8_t len = IS_DUAL_ENABLED ? 4 : 3;
+    menu.process_submenu(get_dualstate_menuoption, len);
+
+    uint8_t flags = 0;
+    for (uint8_t index=0; index<len; ++index) {
+        menu.drawSubMenu(drawDualStateSubmenu, index, flags);
+    }
+    if (!(flags & MENU_STATUSLINE))
+    {
+        lcd_lib_draw_string_leftP(5, PSTR("Dual state"));
+    }
+
+    lcd_lib_update_screen();
+}
+
+//////////////////
 
 void switch_extruder(uint8_t newExtruder)
 {
@@ -582,6 +700,8 @@ FORCE_INLINE static void lcd_dual_switch_extruder()
     lcd_select_nozzle(NULL, lcd_switch_extruder, lcd_change_to_previous_menu);
 }
 
+//////////////////
+
 static void lcd_simple_buildplate_quit()
 {
     // home z-axis
@@ -608,7 +728,7 @@ static void lcd_simple_buildplate_store()
     if (active_extruder)
     {
         add_homeing_z2 -= current_position[Z_AXIS];
-        Dual_StoreSettings();
+        Dual_StoreAddHomeingZ2();
         // restore homing offset of the first extruder
         Config_RetrieveSettings();
     }
@@ -752,7 +872,6 @@ static void lcd_prepare_buildplate_adjust()
         add_homeing_z2 = 0;
     }
 #endif
-    // enquecommand_P(PSTR("G28 Z0 X0 Y0"));
     char buffer[32] = {0};
     // home axis first
     strcpy_P(buffer, PSTR("G28"));
@@ -801,25 +920,64 @@ void lcd_menu_simple_buildplate_init()
     lcd_lib_update_screen();
 }
 
+//////////////////
+
+static char* lcd_dual_item(uint8_t nr)
+{
+    uint8_t index(0);
+    if (nr == index++)
+        strcpy_P(card.longFilename, PSTR("< RETURN"));
+    else if (nr == index++)
+        strcpy_P(card.longFilename, PSTR("Dual mode"));
+    else if (nr == index++)
+        strcpy_P(card.longFilename, PSTR("Change extruder"));
+    else if (nr == index++)
+    {
+        strcpy_P(card.longFilename, PSTR("Adjust Z (nozzle "));
+        int_to_string(active_extruder+1, card.longFilename+strlen(card.longFilename), PSTR(")"));
+    }
+    else if (nr == index++)
+        strcpy_P(card.longFilename, PSTR("Extruder offset"));
+    else if (nr == index++)
+        strcpy_P(card.longFilename, PSTR("Docking position"));
+    else if (nr == index++)
+        strcpy_P(card.longFilename, PSTR("Wipe position"));
+    else
+        strcpy_P(card.longFilename, PSTR("???"));
+
+    return card.longFilename;
+}
+
+static void lcd_dual_details(uint8_t nr)
+{
+    if (nr == 1)
+    {
+        // dual mode
+        lcd_lib_draw_string_leftP(BOTTOM_MENU_YPOS, IS_DUAL_ENABLED ? PSTR("enabled") : PSTR("off"));
+    }
+}
+
 void lcd_menu_dual()
 {
-    lcd_scroll_menu(PSTR("Dual extrusion"), 6, lcd_dual_item, lcd_dual_details);
+    lcd_scroll_menu(PSTR("Dual extrusion"), 7, lcd_dual_item, lcd_dual_details);
     if (lcd_lib_button_pressed)
     {
         if (IS_SELECTED_SCROLL(0))
             lcd_change_to_menu(lcd_menu_maintenance_advanced);
         else if (IS_SELECTED_SCROLL(1))
-            lcd_change_to_menu(lcd_dual_switch_extruder, MAIN_MENU_ITEM_POS(active_extruder ? 1 : 0));
+            lcd_change_to_menu(lcd_menu_dualstate, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(2))
+            lcd_change_to_menu(lcd_dual_switch_extruder, MAIN_MENU_ITEM_POS(active_extruder ? 1 : 0));
+        else if (IS_SELECTED_SCROLL(3))
         {
             lcd_prepare_buildplate_adjust();
             lcd_change_to_menu(lcd_menu_simple_buildplate_init, ENCODER_NO_SELECTION);
         }
-        else if (IS_SELECTED_SCROLL(3))
-            lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(4))
-            lcd_change_to_menu(lcd_menu_dockposition, MAIN_MENU_ITEM_POS(1));
+            lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(5))
+            lcd_change_to_menu(lcd_menu_dockposition, MAIN_MENU_ITEM_POS(1));
+        else if (IS_SELECTED_SCROLL(6))
             lcd_change_to_menu(lcd_menu_wipeposition, MAIN_MENU_ITEM_POS(1));
     }
     lcd_lib_update_screen();

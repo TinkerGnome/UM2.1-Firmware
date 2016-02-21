@@ -36,7 +36,6 @@
 			<Add option="-DF_CPU=16000000" />
 			<Add option="-DEXTRUDERS=2" />
 			<Add option="-DTEMP_SENSOR_1=20" />
-			<Add option="-DMARK2HEAD" />
 			<Add directory="arduino_sim" />
 			<Add directory="avr_sim" />
 			<Add directory="D:/SDL-1.2.15/include" />
@@ -112,11 +111,6 @@
 		<Unit filename="../Marlin/temperature.cpp" />
 		<Unit filename="../Marlin/temperature.h" />
 		<Unit filename="../Marlin/thermistortables.h" />
-		<Unit filename="../Marlin/ultralcd.cpp" />
-		<Unit filename="../Marlin/ultralcd.h" />
-		<Unit filename="../Marlin/ultralcd_implementation_hitachi_HD44780.h" />
-		<Unit filename="../Marlin/ultralcd_implementation_ultiboard_v2.h" />
-		<Unit filename="../Marlin/ultralcd_st7920_u8glib_rrd.h" />
 		<Unit filename="../Marlin/watchdog.cpp" />
 		<Unit filename="../Marlin/watchdog.h" />
 		<Unit filename="arduino_sim/Arduino.h" />
