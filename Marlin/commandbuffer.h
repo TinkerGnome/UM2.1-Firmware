@@ -7,8 +7,10 @@ class CommandBuffer
 {
   public:
 
-    void processT0();
-    void processT1();
+    static void move2heatup();
+
+    void processT0(bool bRetract);
+    void processT1(bool bRetract);
     void processWipe();
 
 #ifdef SDSUPPORT

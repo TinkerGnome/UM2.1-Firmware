@@ -80,6 +80,7 @@ const char echomagic[] PROGMEM ="echo:";
 void serial_echopair_P(const char *s_P, float v);
 void serial_echopair_P(const char *s_P, double v);
 void serial_echopair_P(const char *s_P, unsigned long v);
+void serial_echopair_P(const char *s_P, unsigned int v);
 
 
 //things to write to serial from Programmemory. saves 400 to 2k of RAM.
@@ -223,16 +224,28 @@ extern unsigned char fanSpeedSoftPwm;
 #endif
 
 #ifdef FWRETRACT
-extern bool autoretract_enabled;
-extern bool retracted;
+#define AUTO_RETRACT 128
+extern uint8_t retract_state;
 extern float retract_length, retract_feedrate, retract_zlift;
+#define AUTORETRACT_ENABLED (retract_state & AUTO_RETRACT)
+#define RETRACTED(e) (retract_state & (1 << e))
+#define SET_RETRACT_STATE(e) (retract_state |= (1 << e))
+#define CLEAR_RETRACT_STATE(e) (retract_state &= ~(1 << e))
 #if EXTRUDERS > 1
-extern float extruder_swap_retract_length;
 extern float extruder_offset[2][EXTRUDERS];
 bool changeExtruder(uint8_t nextExtruder, bool moveZ);
 #endif
-extern float retract_recover_length, retract_recover_feedrate;
-#endif
+extern float retract_recover_length[EXTRUDERS];
+extern float retract_recover_feedrate[EXTRUDERS];
+
+FORCE_INLINE void reset_retractstate()
+{
+    for (uint8_t e=0; e<EXTRUDERS; ++e)
+    {
+        CLEAR_RETRACT_STATE(e);
+    }
+}
+#endif //FWRETRACT
 
 extern unsigned long starttime;
 extern unsigned long stoptime;

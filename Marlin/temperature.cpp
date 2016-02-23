@@ -435,7 +435,7 @@ void manage_heater()
   for(int8_t e = 0; e < EXTRUDERS; ++e)
   {
     target_temp = target_temperature[e];
-    if (IS_SD_PRINTING || (m - lastSerialCommandTime < SERIAL_CONTROL_TIMEOUT))
+    if ((printing_state != PRINT_STATE_HEATING) & (IS_SD_PRINTING || (m - lastSerialCommandTime < SERIAL_CONTROL_TIMEOUT)))
     {
         // reduce target temp of inactive nozzle during printing
         if ((extruder_lastused[e] + HEATER_TIMEOUT_2) < m)

@@ -207,13 +207,10 @@ int EtoPPressure=0;
 bool position_error;
 
 #ifdef FWRETRACT
-  bool autoretract_enabled=false;
-  bool retracted=false;
-  float retract_length=4.5, retract_feedrate=25*60, retract_zlift=0.8;
-#if EXTRUDERS > 1
-  float extruder_swap_retract_length=16.0;
-#endif
-  float retract_recover_length=0, retract_recover_feedrate=25*60;
+  uint8_t retract_state=AUTO_RETRACT;
+  float retract_length=4.5, retract_feedrate=25*60, retract_zlift=0.0;
+  float retract_recover_length[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0.0f, 0.0f, 0.0f);
+  float retract_recover_feedrate[EXTRUDERS];
 #endif
 
 uint8_t printing_state;
@@ -271,13 +268,15 @@ uint8_t Stopped = false;
 
 static void get_command();
 static void get_arc_coordinates();
-static bool setTargetedHotend(int code);
+static bool setTargetedHotend(uint16_t code);
 
 void serial_echopair_P(const char *s_P, float v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
 void serial_echopair_P(const char *s_P, double v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
 void serial_echopair_P(const char *s_P, unsigned long v)
+    { serialprintPGM(s_P); SERIAL_ECHO(v); }
+void serial_echopair_P(const char *s_P, unsigned int v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
 
 extern "C"{
@@ -1009,14 +1008,14 @@ void process_command(const char *strCmd)
       break;
       #ifdef FWRETRACT
       case 10: // G10 retract
-      if(!retracted)
+      if(!RETRACTED(active_extruder))
       {
         destination[X_AXIS]=current_position[X_AXIS];
         destination[Y_AXIS]=current_position[Y_AXIS];
         destination[Z_AXIS]=current_position[Z_AXIS];
         #if EXTRUDERS > 1
         if (code_seen('S') && code_value_long() == 1)
-            destination[E_AXIS]=current_position[E_AXIS]-extruder_swap_retract_length/volume_to_filament_length[active_extruder];
+            destination[E_AXIS]=current_position[E_AXIS]-toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
         else
             destination[E_AXIS]=current_position[E_AXIS]-retract_length/volume_to_filament_length[active_extruder];
         #else
@@ -1024,23 +1023,23 @@ void process_command(const char *strCmd)
         #endif
         float oldFeedrate = feedrate;
         feedrate=retract_feedrate;
-        retract_recover_length = current_position[E_AXIS]-destination[E_AXIS];//Set the recover length to whatever distance we retracted so we recover properly.
-        retracted=true;
+        retract_recover_length[active_extruder] = current_position[E_AXIS]-destination[E_AXIS];//Set the recover length to whatever distance we retracted so we recover properly.
+        SET_RETRACT_STATE(active_extruder);
         prepare_move();
         feedrate = oldFeedrate;
       }
 
       break;
       case 11: // G11 retract_recover
-      if(retracted)
+      if(RETRACTED(active_extruder))
       {
         destination[X_AXIS]=current_position[X_AXIS];
         destination[Y_AXIS]=current_position[Y_AXIS];
         destination[Z_AXIS]=current_position[Z_AXIS];
-        destination[E_AXIS]=current_position[E_AXIS]+retract_recover_length;
+        destination[E_AXIS]=current_position[E_AXIS]+retract_recover_length[active_extruder];
         float oldFeedrate = feedrate;
-        feedrate=retract_recover_feedrate;
-        retracted=false;
+        feedrate=retract_recover_feedrate[active_extruder];
+        CLEAR_RETRACT_STATE(active_extruder);
         prepare_move();
         feedrate = oldFeedrate;
       }
@@ -1058,7 +1057,7 @@ void process_command(const char *strCmd)
       for(int8_t i=0; i < NUM_AXIS; i++) {
         destination[i] = current_position[i];
       }
-          feedrate = 0.0;
+      feedrate = 0.0;
 
 #ifdef DELTA
           // A delta can only safely home all axis at the same time
@@ -1179,19 +1178,19 @@ void process_command(const char *strCmd)
       if(code_seen(axis_codes[X_AXIS]))
       {
         if(code_value_long() != 0) {
-          current_position[X_AXIS]=code_value()+add_homeing[0];
+          current_position[X_AXIS]=code_value()+add_homeing[X_AXIS];
         }
       }
 
       if(code_seen(axis_codes[Y_AXIS])) {
         if(code_value_long() != 0) {
-          current_position[Y_AXIS]=code_value()+add_homeing[1];
+          current_position[Y_AXIS]=code_value()+add_homeing[Y_AXIS];
         }
       }
 
       if(code_seen(axis_codes[Z_AXIS])) {
         if(code_value_long() != 0) {
-          current_position[Z_AXIS]=code_value()+add_homeing[2];
+          current_position[Z_AXIS]=code_value()+add_homeing[Z_AXIS];
         }
       }
       plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
@@ -1493,6 +1492,7 @@ void process_command(const char *strCmd)
               SERIAL_EOL;
             #endif
             codenum = millis();
+            extruder_lastused[tmp_extruder] = codenum;
           }
           idle();
         #ifdef TEMP_RESIDENCY_TIME
@@ -1784,13 +1784,16 @@ void process_command(const char *strCmd)
     }break;
     case 208: // M208 - set retract recover length S[positive mm surplus to the M207 S*] F[feedrate mm/min]
     {
+      if(setTargetedHotend(208)){
+        break;
+      }
       if(code_seen('S'))
       {
-        retract_recover_length = code_value() ;
+        retract_recover_length[tmp_extruder] = code_value() ;
       }
       if(code_seen('F'))
       {
-        retract_recover_feedrate = code_value() ;
+        retract_recover_feedrate[tmp_extruder] = code_value() ;
       }
     }break;
     case 209: // M209 - S<1=true/0=false> enable automatic retract detect if the slicer did not support G10/11: every normal extrude-only move will be classified as retract depending on the direction.
@@ -1800,8 +1803,8 @@ void process_command(const char *strCmd)
         int t= code_value() ;
         switch(t)
         {
-          case 0: autoretract_enabled=false;retracted=false;break;
-          case 1: autoretract_enabled=true;retracted=false;break;
+          case 0: reset_retractstate();retract_state &= ~AUTO_RETRACT;break;
+          case 1: reset_retractstate();retract_state |= AUTO_RETRACT;break;
           default:
             SERIAL_ECHO_START;
             SERIAL_ECHOPGM(MSG_UNKNOWN_COMMAND);
@@ -1848,9 +1851,13 @@ void process_command(const char *strCmd)
     break;
     case 221: // M221 S<factor in percent>- set extrude factor override percentage
     {
+      if(setTargetedHotend(221)){
+        break;
+      }
+
       if(code_seen('S'))
       {
-        extrudemultiply[active_extruder] = code_value() ;
+        extrudemultiply[tmp_extruder] = code_value() ;
       }
     }
     break;
@@ -2410,8 +2417,7 @@ void process_command(const char *strCmd)
     tmp_extruder = code_value();
     if(tmp_extruder >= EXTRUDERS) {
       SERIAL_ECHO_START;
-      SERIAL_ECHOPGM("T");
-      SERIAL_ECHO(tmp_extruder);
+      SERIAL_ECHOPAIR("T", (unsigned int)tmp_extruder);
       SERIAL_ECHOLNPGM(MSG_INVALID_EXTRUDER);
     }
     else
@@ -2525,34 +2531,34 @@ void get_coordinates()
         if(next_feedrate > 0.0f) feedrate = next_feedrate;
     }
 #ifdef FWRETRACT
-    if(autoretract_enabled)
+    if(AUTORETRACT_ENABLED)
     {
         if( !(seen[X_AXIS] || seen[Y_AXIS] || seen[Z_AXIS]) && seen[E_AXIS])
         {
             float echange=destination[E_AXIS]-current_position[E_AXIS];
             if(echange<-MIN_RETRACT) //retract
             {
-                if(!retracted)
+                if(!RETRACTED(active_extruder))
                 {
                     destination[Z_AXIS]+=retract_zlift; //not sure why chaninging current_position negatively does not work.
                     //if slicer retracted by echange=-1mm and you want to retract 3mm, corrrectede=-2mm additionally
                     float correctede=-echange-retract_length;
                     //to generate the additional steps, not the destination is changed, but inversely the current position
-                    current_position[E_AXIS]+=-correctede;
+                    current_position[E_AXIS]-=correctede;
                     feedrate=retract_feedrate;
-                    retracted=true;
+                    SET_RETRACT_STATE(active_extruder);
                 }
             }
             else if(echange>MIN_RETRACT) //retract_recover
             {
-                if(retracted)
+                if(RETRACTED(active_extruder))
                 {
-                    //current_position[Z_AXIS]+=-retract_zlift;
+                    current_position[Z_AXIS]-=retract_zlift;
                     //if slicer retracted_recovered by echange=+1mm and you want to retract_recover 3mm, corrrectede=2mm additionally
-                    float correctede=-echange+1*retract_length+retract_recover_length; //total unretract=retract_length+retract_recover_length[surplus]
+                    float correctede=-echange+1*retract_length+retract_recover_length[active_extruder]; //total unretract=retract_length+retract_recover_length[surplus]
                     current_position[E_AXIS]+=correctede; //to generate the additional steps, not the destination is changed, but inversely the current position
-                    feedrate=retract_recover_feedrate;
-                    retracted=false;
+                    feedrate=retract_recover_feedrate[active_extruder];
+                    CLEAR_RETRACT_STATE(active_extruder);
                 }
             }
         }
@@ -2901,27 +2907,16 @@ void setPwmFrequency(uint8_t pin, int val)
 }
 #endif //FAST_PWM_FAN
 
-static bool setTargetedHotend(int code)
+static bool setTargetedHotend(uint16_t code)
 {
   tmp_extruder = active_extruder;
   if(code_seen('T')) {
     tmp_extruder = code_value();
     if(tmp_extruder >= EXTRUDERS) {
       SERIAL_ECHO_START;
-      switch(code){
-        case 104:
-          SERIAL_ECHOPGM(MSG_M104_INVALID_EXTRUDER);
-          break;
-        case 105:
-          SERIAL_ECHOPGM(MSG_M105_INVALID_EXTRUDER);
-          break;
-        case 109:
-          SERIAL_ECHOPGM(MSG_M109_INVALID_EXTRUDER);
-          break;
-        case 218:
-          SERIAL_ECHOPGM(MSG_M218_INVALID_EXTRUDER);
-          break;
-      }
+      SERIAL_ECHOPAIR("M", (unsigned int)code);
+      SERIAL_ECHOPGM(MSG_INVALID_EXTRUDER);
+      SERIAL_CHAR(' ');
       SERIAL_ECHOLN(tmp_extruder);
       return true;
     }
@@ -2933,7 +2928,8 @@ static bool setTargetedHotend(int code)
 static void reheatNozzle(uint8_t e)
 {
     unsigned long last_output = millis();
-    while ( isHeatingHotend(e) )
+
+    while ( current_temperature[e] < target_temperature[e] - TEMP_WINDOW )
     {
     #if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_MAX6675)
       if( (millis() - last_output) > 1000UL )
@@ -2994,11 +2990,11 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         // execute toolchange script
         if (nextExtruder)
         {
-            cmdBuffer.processT1();
+            cmdBuffer.processT1(moveZ);
         }
         else
         {
-            cmdBuffer.processT0();
+            cmdBuffer.processT0(moveZ);
         }
         // finish tool change moves
         st_synchronize();
@@ -3016,7 +3012,7 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         if (moveZ && IS_WIPE_ENABLED)
         {
             // move to heatup pos
-            process_command_P(PSTR(HEATUP_POSITION_COMMAND));
+            CommandBuffer::move2heatup();
 
             // wait for nozzle heatup
             reheatNozzle(active_extruder);

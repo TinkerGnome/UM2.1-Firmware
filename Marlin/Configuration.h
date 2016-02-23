@@ -324,12 +324,24 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define DISABLE_Z false
 #define DISABLE_E false // For all extruders
 
+#ifndef INVERT_X_DIR
 #define INVERT_X_DIR true     // for Mendel set to false, for Orca set to true
+#endif
+#ifndef INVERT_Y_DIR
 #define INVERT_Y_DIR false    // for Mendel set to true, for Orca set to false
+#endif
+#ifndef INVERT_Z_DIR
 #define INVERT_Z_DIR true     // for Mendel set to false, for Orca set to true
+#endif
+#ifndef INVERT_E0_DIR
 #define INVERT_E0_DIR true    // for direct drive extruder v9 set to true, for geared extruder set to false
+#endif
+#ifndef INVERT_E1_DIR
 #define INVERT_E1_DIR true    // for direct drive extruder v9 set to true, for geared extruder set to false
+#endif
+#ifndef INVERT_E2_DIR
 #define INVERT_E2_DIR true    // for direct drive extruder v9 set to true, for geared extruder set to false
+#endif
 
 // ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
@@ -340,12 +352,24 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define min_software_endstops true // If true, axis won't move to coordinates less than HOME_POS.
 #define max_software_endstops true  // If true, axis won't move to coordinates greater than the defined lengths below.
 // Travel limits after homing
+#ifndef X_MAX_POS
 #define X_MAX_POS 230
+#endif
+#ifndef X_MIN_POS
 #define X_MIN_POS 0
+#endif
+#ifndef Y_MAX_POS
 #define Y_MAX_POS 230
+#endif
+#ifndef Y_MIN_POS
 #define Y_MIN_POS 0
+#endif
+#ifndef Z_MAX_POS
 #define Z_MAX_POS 225
+#endif
+#ifndef Z_MIN_POS
 #define Z_MIN_POS 0
+#endif
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
 #define Y_MAX_LENGTH (Y_MAX_POS - Y_MIN_POS)
@@ -586,7 +610,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 
 
 // Configuration of behaviors at the start and end of prints
-#define END_OF_PRINT_RETRACTION 20		// number of mm to retract when printer goes idle
+#define END_OF_PRINT_RETRACTION 20u		// number of mm to retract when printer goes idle
 #define END_OF_PRINT_RECOVERY_SPEED 5 	// speed to recover that assumed retraction at (mm/s)
 #define PRIMING_MM3	50					// number of mm^3 of plastic to extrude when priming
 										// (Ultimaker 2 hot end capacity is approx 80 mm^3)
@@ -594,7 +618,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 										// (Ultimaker 2 upper limit is 8-10)
 #define PRIMING_HEIGHT 20				// Height at which to perform the priming extrusions
 
-#define HEATUP_POSITION_COMMAND "G1 F12000 X%i Y%i"
+#define HEATUP_POSITION_COMMAND "G1 F12000 X%u Y%u"
 
 // Bed leveling wizard configuration
 #define LEVELING_OFFSET 0.1				// Assumed thickness of feeler gauge/paper used in leveling (mm)

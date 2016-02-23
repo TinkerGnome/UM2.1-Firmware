@@ -3,6 +3,8 @@
 #include "ConfigurationDual.h"
 #include "planner.h"
 #include "stepper.h"
+#include "UltiLCD2_low_lib.h"
+#include "UltiLCD2_menu_print.h" // use lcd_cache as char buffer
 
 #if (EXTRUDERS > 1)
 
@@ -141,7 +143,52 @@ uint8_t CommandBuffer::processScript(struct t_cmdline *script)
 
 #endif // SDSUPPORT
 
-void CommandBuffer::processT0()
+static char * toolchange_retract(char *buffer, uint8_t e)
+{
+    float length = toolchange_retractlen[e] / volume_to_filament_length[e];
+#ifdef FWRETRACT
+    if (RETRACTED(e))
+    {
+        length = min(0.0, length-retract_recover_length[e]);
+        retract_recover_length[e] += length;
+    }
+    else {
+        SET_RETRACT_STATE(e);
+        retract_recover_length[e] = length;
+    }
+#endif // FWRETRACT
+    float_to_string(current_position[E_AXIS]-length, LCD_CACHE_FILENAME(3), NULL);
+    sprintf_P(buffer, PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[e]*60);
+    return buffer;
+}
+
+static char * toolchange_recover(char *buffer, uint8_t e)
+{
+#ifdef FWRETRACT
+    float length = RETRACTED(e) ? retract_recover_length[e] : toolchange_retractlen[e]/volume_to_filament_length[e];
+    CLEAR_RETRACT_STATE(e);
+#else
+    float length = toolchange_retractlen[e]/volume_to_filament_length[e];
+#endif // FWRETRACT
+    float_to_string(current_position[E_AXIS]+(length*0.8), LCD_CACHE_FILENAME(3), NULL);
+    sprintf_P(buffer, PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[e]*60);
+    return buffer;
+}
+
+static char * toolchange_prime(char *buffer, uint8_t e)
+{
+#ifdef FWRETRACT
+    float length = RETRACTED(e) ? retract_recover_length[e] : toolchange_retractlen[e]/volume_to_filament_length[e];
+    CLEAR_RETRACT_STATE(e);
+#else
+    float length = toolchange_retractlen[e]/volume_to_filament_length[e];
+#endif // FWRETRACT
+    float_to_string(current_position[E_AXIS]+(length*0.4), LCD_CACHE_FILENAME(3), NULL);
+    sprintf_P(buffer, PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), 40);
+    return buffer;
+}
+
+void CommandBuffer::processT0(bool bRetract)
 {
 #ifdef SDSUPPORT
     if (t0)
@@ -151,23 +198,28 @@ void CommandBuffer::processT0()
     else
 #endif // SDSUPPORT
     {
-        char buffer[30] = {0};
-
-        sprintf_P(buffer, PSTR("G1 X170 Y51 F%i"), 200*60);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 Y%.2f"), dock_position[Y_AXIS]);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 X%.2f F%i"), dock_position[X_AXIS], 50*60);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 Y55 F%i"), 100*60);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 X171 F%i"), 200*60);
-        process_command(buffer);
-
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 Y51 F%i"), 200*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        if (bRetract)
+        {
+            process_command(toolchange_retract(LCD_CACHE_FILENAME(2), 1));
+        }
+        float_to_string(dock_position[Y_AXIS], LCD_CACHE_FILENAME(3), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y%s"), LCD_CACHE_FILENAME(3));
+        process_command(LCD_CACHE_FILENAME(2));
+        idle();
+        float_to_string(dock_position[X_AXIS], LCD_CACHE_FILENAME(3), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s F%i"), LCD_CACHE_FILENAME(3), 50*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y55 F%i"), 100*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X171 F%i"), 200*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        idle();
     }
 }
 
-void CommandBuffer::processT1()
+void CommandBuffer::processT1(bool bRetract)
 {
 #ifdef SDSUPPORT
     if (t1)
@@ -177,19 +229,24 @@ void CommandBuffer::processT1()
     else
 #endif // SDSUPPORT
     {
-        char buffer[30] = {0};
-
-        sprintf_P(buffer, PSTR("G1 X170 Y55 F%i"), 200*60);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 X%.2f"), dock_position[X_AXIS]);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 Y%.2f F%i"), dock_position[Y_AXIS], 100*60);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 X170 F%i"), 50*60);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 Y55 F%i"), 200*60);
-        process_command(buffer);
-
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 Y55 F%i"), 200*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        if (bRetract)
+        {
+            process_command(toolchange_retract(LCD_CACHE_FILENAME(2), 0));
+        }
+        float_to_string(dock_position[X_AXIS], LCD_CACHE_FILENAME(3), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s"), LCD_CACHE_FILENAME(3));
+        process_command(LCD_CACHE_FILENAME(2));
+        float_to_string(dock_position[Y_AXIS], LCD_CACHE_FILENAME(3), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y%s F%i"), LCD_CACHE_FILENAME(3), 100*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        idle();
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 F%i"), 50*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y55 F%i"), 200*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        idle();
     }
 }
 
@@ -203,34 +260,69 @@ void CommandBuffer::processWipe()
     else
 #endif // SDSUPPORT
     {
-        char buffer[30] = {0};
+        float length = toolchange_retractlen[active_extruder] / volume_to_filament_length[active_extruder];
 
         // undo the toolchange retraction
-        plan_set_e_position((current_position[E_AXIS] - extruder_swap_retract_length) / volume_to_filament_length[active_extruder]);
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], END_OF_PRINT_RECOVERY_SPEED, active_extruder);
+        process_command(toolchange_recover(LCD_CACHE_FILENAME(2), active_extruder));
 
         // prime nozzle
-        plan_set_e_position((current_position[E_AXIS] - (extruder_swap_retract_length*0.5f)) / volume_to_filament_length[active_extruder]);
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 0.7f, active_extruder);
+        process_command(toolchange_prime(LCD_CACHE_FILENAME(2), active_extruder));
+
+        // retract before wipe
+        float_to_string(current_position[E_AXIS]-(length*0.4), LCD_CACHE_FILENAME(3), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[active_extruder]*60);
+        process_command(LCD_CACHE_FILENAME(2));
+
+        // wait a second
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G4 P%i"), 1000);
+        process_command(LCD_CACHE_FILENAME(2));
 
         // wipe moves
-        sprintf_P(buffer, PSTR("G1 X%.2f Y60 F%i"), wipe_position[X_AXIS], 200*60);
-        process_command(buffer);
-        process_command_P(PSTR("G1 Y30"));
-        sprintf_P(buffer, PSTR("G1 Y%.2f F%i"), wipe_position[Y_AXIS]-3.0f, 100*60);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 X%.2f"), wipe_position[X_AXIS]+5.5f);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 X%.2f Y%.2f"), wipe_position[X_AXIS]-5.5f, wipe_position[Y_AXIS]);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 X%.2f Y%.2f"), wipe_position[X_AXIS]+5.5f, wipe_position[Y_AXIS]+4.0f);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 Y35 F%i"), 100*60);
-        process_command(buffer);
-        sprintf_P(buffer, PSTR("G1 Y60 F%i"), 200*60);
-        process_command(buffer);
+        float_to_string(wipe_position[X_AXIS], LCD_CACHE_FILENAME(3), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s Y60 F%i"), LCD_CACHE_FILENAME(3), 200*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        process_command_P(PSTR("G0 Y30"));
+        float_to_string(wipe_position[Y_AXIS]-3.0f, LCD_CACHE_FILENAME(3), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y%s F%i"), LCD_CACHE_FILENAME(3), 100*60);
+        process_command(LCD_CACHE_FILENAME(2));
+        float_to_string(wipe_position[X_AXIS]+5.5f, LCD_CACHE_FILENAME(3), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s"), LCD_CACHE_FILENAME(3));
+        process_command(LCD_CACHE_FILENAME(2));
+        float_to_string(wipe_position[X_AXIS]-5.5f, LCD_CACHE_FILENAME(3), NULL);
+        float_to_string(wipe_position[Y_AXIS], LCD_CACHE_FILENAME(1), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s Y%s"), LCD_CACHE_FILENAME(3), LCD_CACHE_FILENAME(1));
+        process_command(LCD_CACHE_FILENAME(2));
+        float_to_string(wipe_position[X_AXIS]+5.5f, LCD_CACHE_FILENAME(3), NULL);
+        float_to_string(wipe_position[Y_AXIS]+4.0f, LCD_CACHE_FILENAME(1), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s Y%s"), LCD_CACHE_FILENAME(3), LCD_CACHE_FILENAME(1));
+        process_command(LCD_CACHE_FILENAME(2));
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y35 F%i"), 100*60);
+        process_command(LCD_CACHE_FILENAME(2));
 
+        // small retract after wipe
+        float_to_string(current_position[E_AXIS]-(length*0.1), LCD_CACHE_FILENAME(3), NULL);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[active_extruder]*60);
+        process_command(LCD_CACHE_FILENAME(2));
+    #ifdef FWRETRACT
+        retract_recover_length[active_extruder] = 0.5*length;
+        SET_RETRACT_STATE(active_extruder);
+    #endif // FWRETRACT
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y60 F%i"), 200*60);
+        process_command(LCD_CACHE_FILENAME(2));
     }
+}
+
+void CommandBuffer::move2heatup()
+{
+#if (EXTRUDERS > 1)
+    uint16_t x = max(5, 5 + extruder_offset[X_AXIS][active_extruder]);
+    uint16_t y = IS_DUAL_ENABLED ? 60 : 10;
+#else
+    uint8_t x = 5;
+    uint8_t y = 10;
+#endif
+    sprintf_P(LCD_CACHE_FILENAME(3), PSTR(HEATUP_POSITION_COMMAND), x, y);
+    process_command(LCD_CACHE_FILENAME(3));
 }
 
 #endif

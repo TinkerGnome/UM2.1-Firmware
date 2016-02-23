@@ -238,6 +238,12 @@ void Config_RetrieveSettings()
         i = EEPROM_OFFSET + 84;
         EEPROM_READ_VAR(i,add_homeing);
     }
+
+    for (uint8_t e=0; e<EXTRUDERS; ++e)
+    {
+        retract_recover_feedrate[e] = retract_feedrate;
+    }
+
     Config_PrintSettings();
 }
 #endif

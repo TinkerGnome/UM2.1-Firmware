@@ -35,6 +35,13 @@ static void lcd_store_wipeposition()
 static void lcd_store_extruderoffset()
 {
     Dual_StoreExtruderOffset();
+    Dual_StoreAddHomeingZ2();
+    lcd_change_to_previous_menu();
+}
+
+static void lcd_store_tcretract()
+{
+    Dual_StoreRetract();
     lcd_change_to_previous_menu();
 }
 
@@ -59,7 +66,7 @@ static void lcd_extruderoffset_z()
     }
 }
 
-// create menu options for "axis steps/mm"
+// create menu options for "extruder offset"
 static const menu_t & get_extruderoffset_menuoption(uint8_t nr, menu_t &opt)
 {
     uint8_t index(0);
@@ -75,18 +82,18 @@ static const menu_t & get_extruderoffset_menuoption(uint8_t nr, menu_t &opt)
     }
     else if (nr == index++)
     {
-        // x steps
-        opt.setData(MENU_INPLACE_EDIT, lcd_extruderoffset_x, 5);
+        // x offset
+        opt.setData(MENU_INPLACE_EDIT, lcd_extruderoffset_x, 8);
     }
     else if (nr == index++)
     {
-        // y steps
-        opt.setData(MENU_INPLACE_EDIT, lcd_extruderoffset_y, 5);
+        // y offset
+        opt.setData(MENU_INPLACE_EDIT, lcd_extruderoffset_y, 8);
     }
     else if (nr == index++)
     {
-        // z steps
-        opt.setData(MENU_INPLACE_EDIT, lcd_extruderoffset_z, 5);
+        // z offset
+        opt.setData(MENU_INPLACE_EDIT, lcd_extruderoffset_z, 8);
     }
     return opt;
 }
@@ -476,6 +483,200 @@ static void lcd_menu_wipeposition()
     if (!(flags & MENU_STATUSLINE))
     {
         lcd_lib_draw_string_leftP(5, PSTR("Wipe position"));
+    }
+
+    lcd_lib_update_screen();
+}
+
+//////////////////
+
+static void lcd_tcretractlen_e0()
+{
+    lcd_tune_value(toolchange_retractlen[0], 0.0f, 50.0, 0.1f);
+}
+
+static void lcd_tcretractlen_e1()
+{
+    lcd_tune_value(toolchange_retractlen[1], 0.0f, 50.0, 0.1f);
+}
+
+static void lcd_tcretractfeed_e0()
+{
+    lcd_tune_value(toolchange_retractfeedrate[0], 0.0f, max_feedrate[E_AXIS]*60, 60.0f);
+}
+
+static void lcd_tcretractfeed_e1()
+{
+    lcd_tune_value(toolchange_retractfeedrate[1], 0.0f, max_feedrate[E_AXIS]*60, 60.0f);
+}
+
+// create menu options for "axis steps/mm"
+static const menu_t & get_tcretract_menuoption(uint8_t nr, menu_t &opt)
+{
+    uint8_t index(0);
+    if (nr == index++)
+    {
+        // STORE
+        opt.setData(MENU_NORMAL, lcd_store_tcretract);
+    }
+    else if (nr == index++)
+    {
+        // RETURN
+        opt.setData(MENU_NORMAL, lcd_change_to_previous_menu);
+    }
+    else if (nr == index++)
+    {
+        // nozzle 1 retract len
+        opt.setData(MENU_INPLACE_EDIT, lcd_tcretractlen_e0, 2);
+    }
+    else if (nr == index++)
+    {
+        // nozzle 1 retract feedrate
+        opt.setData(MENU_INPLACE_EDIT, lcd_tcretractfeed_e0, 2);
+    }
+    else if (nr == index++)
+    {
+        // nozzle 2 retract len
+        opt.setData(MENU_INPLACE_EDIT, lcd_tcretractlen_e1, 2);
+    }
+    else if (nr == index++)
+    {
+        // nozzle 2 retract feedrate
+        opt.setData(MENU_INPLACE_EDIT, lcd_tcretractfeed_e1, 2);
+    }
+    return opt;
+}
+
+static void drawTCRetractSubmenu(uint8_t nr, uint8_t &flags)
+{
+    uint8_t index(0);
+    char buffer[32] = {0};
+    if (nr == index++)
+    {
+        // Store
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Store retract values"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("STORE")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // RETURN
+        LCDMenu::drawMenuBox(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                           , BOTTOM_MENU_YPOS
+                           , 52
+                           , LCD_CHAR_HEIGHT
+                           , flags);
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Click to return"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("RETURN")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // nozzle 1 len
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Retract len (mm)"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(27, PSTR("Len"));
+        float_to_string(toolchange_retractlen[0], buffer, NULL);
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*7
+                                , 27
+                                , LCD_CHAR_SPACING*5
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // nozzle 1 feedrate
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Retract speed (mm/s)"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(37, PSTR("Speed"));
+        float_to_string(toolchange_retractfeedrate[0]/60, buffer, NULL);
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*7
+                                , 37
+                                , LCD_CHAR_SPACING*5
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // nozzle 2 len
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Retract len (mm)"));
+            flags |= MENU_STATUSLINE;
+        }
+        float_to_string(toolchange_retractlen[1], buffer, NULL);
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*14
+                                , 27
+                                , LCD_CHAR_SPACING*5
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // nozzle 2 feedrate
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Retract speed (mm/s)"));
+            flags |= MENU_STATUSLINE;
+        }
+        float_to_string(toolchange_retractfeedrate[1]/60, buffer, NULL);
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*14
+                                , 37
+                                , LCD_CHAR_SPACING*5
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+}
+
+static void lcd_menu_tcretract()
+{
+    lcd_basic_screen();
+    lcd_lib_draw_hline(3, 124, 13);
+    lcd_lib_draw_string_leftP(17, PSTR("Nozzle"));
+    lcd_lib_draw_stringP(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*8,  17, PSTR("(1)"));
+    lcd_lib_draw_stringP(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*15, 17, PSTR("(2)"));
+
+    menu.process_submenu(get_tcretract_menuoption, 6);
+
+    uint8_t flags = 0;
+    for (uint8_t index=0; index<6; ++index) {
+        menu.drawSubMenu(drawTCRetractSubmenu, index, flags);
+    }
+    if (!(flags & MENU_STATUSLINE))
+    {
+        lcd_lib_draw_string_leftP(5, PSTR("Toolchange retract"));
     }
 
     lcd_lib_update_screen();
@@ -932,16 +1133,18 @@ static char* lcd_dual_item(uint8_t nr)
     else if (nr == index++)
         strcpy_P(card.longFilename, PSTR("Change extruder"));
     else if (nr == index++)
-    {
-        strcpy_P(card.longFilename, PSTR("Adjust Z (nozzle "));
-        int_to_string(active_extruder+1, card.longFilename+strlen(card.longFilename), PSTR(")"));
-    }
+        strcpy_P(card.longFilename, PSTR("Toolchange retract"));
     else if (nr == index++)
         strcpy_P(card.longFilename, PSTR("Extruder offset"));
     else if (nr == index++)
         strcpy_P(card.longFilename, PSTR("Docking position"));
     else if (nr == index++)
         strcpy_P(card.longFilename, PSTR("Wipe position"));
+    else if (nr == index++)
+    {
+        strcpy_P(card.longFilename, PSTR("Adjust Z (nozzle "));
+        int_to_string(active_extruder+1, card.longFilename+strlen(card.longFilename), PSTR(")"));
+    }
     else
         strcpy_P(card.longFilename, PSTR("???"));
 
@@ -959,7 +1162,7 @@ static void lcd_dual_details(uint8_t nr)
 
 void lcd_menu_dual()
 {
-    lcd_scroll_menu(PSTR("Dual extrusion"), 7, lcd_dual_item, lcd_dual_details);
+    lcd_scroll_menu(PSTR("Dual extrusion"), 8, lcd_dual_item, lcd_dual_details);
     if (lcd_lib_button_pressed)
     {
         if (IS_SELECTED_SCROLL(0))
@@ -969,18 +1172,19 @@ void lcd_menu_dual()
         else if (IS_SELECTED_SCROLL(2))
             lcd_change_to_menu(lcd_dual_switch_extruder, MAIN_MENU_ITEM_POS(active_extruder ? 1 : 0));
         else if (IS_SELECTED_SCROLL(3))
-        {
-            lcd_prepare_buildplate_adjust();
-            lcd_change_to_menu(lcd_menu_simple_buildplate_init, ENCODER_NO_SELECTION);
-        }
+            lcd_change_to_menu(lcd_menu_tcretract, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(4))
             lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(5))
             lcd_change_to_menu(lcd_menu_dockposition, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(6))
             lcd_change_to_menu(lcd_menu_wipeposition, MAIN_MENU_ITEM_POS(1));
+        else if (IS_SELECTED_SCROLL(7))
+        {
+            lcd_prepare_buildplate_adjust();
+            lcd_change_to_menu(lcd_menu_simple_buildplate_init, ENCODER_NO_SELECTION);
+        }
     }
-    lcd_lib_update_screen();
 }
 
 

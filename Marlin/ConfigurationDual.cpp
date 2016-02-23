@@ -83,7 +83,7 @@ void Dual_RetrieveSettings()
 
         for (uint8_t e=0; e<EXTRUDERS; ++e)
         {
-            toolchange_retractlen[e]      = extruder_swap_retract_length;
+            toolchange_retractlen[e]      = 16.0f;
             toolchange_retractfeedrate[e] = retract_feedrate;
         }
         Dual_StoreRetract();
