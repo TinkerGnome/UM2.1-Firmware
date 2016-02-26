@@ -198,6 +198,10 @@ void CommandBuffer::processT0(bool bRetract)
     else
 #endif // SDSUPPORT
     {
+        // use absolute coordinates
+        uint8_t old_relative_state = axis_relative_state;
+        axis_relative_state = 0;
+
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 Y51 F%i"), 200*60);
         process_command(LCD_CACHE_FILENAME(2));
         if (bRetract)
@@ -216,6 +220,7 @@ void CommandBuffer::processT0(bool bRetract)
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X171 F%i"), 200*60);
         process_command(LCD_CACHE_FILENAME(2));
         idle();
+        axis_relative_state = old_relative_state;
     }
 }
 
@@ -229,6 +234,10 @@ void CommandBuffer::processT1(bool bRetract)
     else
 #endif // SDSUPPORT
     {
+        // use absolute coordinates
+        uint8_t old_relative_state = axis_relative_state;
+        axis_relative_state = 0;
+
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 Y55 F%i"), 200*60);
         process_command(LCD_CACHE_FILENAME(2));
         if (bRetract)
@@ -247,6 +256,7 @@ void CommandBuffer::processT1(bool bRetract)
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y55 F%i"), 200*60);
         process_command(LCD_CACHE_FILENAME(2));
         idle();
+        axis_relative_state = old_relative_state;
     }
 }
 
@@ -260,6 +270,10 @@ void CommandBuffer::processWipe()
     else
 #endif // SDSUPPORT
     {
+        // use absolute coordinates
+        uint8_t old_relative_state = axis_relative_state;
+        axis_relative_state = 0;
+
         float length = toolchange_retractlen[active_extruder] / volume_to_filament_length[active_extruder];
 
         // undo the toolchange retraction
@@ -309,6 +323,7 @@ void CommandBuffer::processWipe()
     #endif // FWRETRACT
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y60 F%i"), 200*60);
         process_command(LCD_CACHE_FILENAME(2));
+        axis_relative_state = old_relative_state;
     }
 }
 

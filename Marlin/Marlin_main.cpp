@@ -169,7 +169,7 @@
 CardReader card;
 #endif
 float homing_feedrate[] = HOMING_FEEDRATE;
-bool axis_relative_modes[] = AXIS_RELATIVE_MODES;
+uint8_t axis_relative_state = 0;
 int feedmultiply=100; //100->1 200->2
 int saved_feedmultiply;
 int extrudemultiply[EXTRUDERS]=ARRAY_BY_EXTRUDERS(100, 100, 100); //100->1 200->2
@@ -228,7 +228,8 @@ static bool home_all_axis = true;
 static float feedrate = 1500.0, next_feedrate, saved_feedrate;
 static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 
-static bool relative_mode = false;  //Determines Absolute or Relative Coordinates
+// static bool relative_mode = false;  //Determines Absolute or Relative Coordinates
+#define RELATIVE_MODE  128
 
 static char cmdbuffer[BUFSIZE][MAX_CMD_SIZE];
 static bool fromsd[BUFSIZE];
@@ -1206,10 +1207,12 @@ void process_command(const char *strCmd)
       endstops_hit_on_purpose();
       break;
     case 90: // G90
-      relative_mode = false;
+      // relative_mode = false;
+      axis_relative_state &= ~RELATIVE_MODE;
       break;
     case 91: // G91
-      relative_mode = true;
+      // relative_mode = true;
+      axis_relative_state |= RELATIVE_MODE;
       break;
     case 92: // G92
       if(!code_seen(axis_codes[E_AXIS]))
@@ -1598,10 +1601,12 @@ void process_command(const char *strCmd)
         break;
 
     case 82:
-      axis_relative_modes[3] = false;
+      // axis_relative_modes[3] = false;
+      axis_relative_state &= ~(1 << E_AXIS);
       break;
     case 83:
-      axis_relative_modes[3] = true;
+      // axis_relative_modes[3] = true;
+      axis_relative_state |= (1 << E_AXIS);
       break;
     case 18: //compatibility
     case 84: // M84
@@ -2504,11 +2509,11 @@ void get_coordinates()
 #ifdef FWRETRACT
     bool seen[4]={false,false,false,false};
 #endif
-    for(int8_t i=0; i < NUM_AXIS; ++i)
+    for(uint8_t i=0; i < NUM_AXIS; ++i)
     {
         if(code_seen(axis_codes[i]))
         {
-            destination[i] = (float)code_value() + (axis_relative_modes[i] || relative_mode)*current_position[i];
+            destination[i] = (float)code_value() + ((axis_relative_state & (1 << i)) || (axis_relative_state & RELATIVE_MODE))*current_position[i];
 #ifdef FWRETRACT
             seen[i]=true;
 #endif
@@ -2569,12 +2574,12 @@ void get_coordinates()
 static void get_arc_coordinates()
 {
 #ifdef SF_ARC_FIX
-   bool relative_mode_backup = relative_mode;
-   relative_mode = true;
+   uint8_t relative_state_backup = axis_relative_state;
+   axis_relative_state |= RELATIVE_MODE;
 #endif
    get_coordinates();
 #ifdef SF_ARC_FIX
-   relative_mode=relative_mode_backup;
+   axis_relative_state=relative_state_backup;
 #endif
 
    if(code_seen('I')) {
