@@ -689,6 +689,11 @@ static void lcd_toggle_dual()
     dual_state ^= DUAL_ENABLED;
 }
 
+static void lcd_toggle_toolchange()
+{
+    dual_state ^= DUAL_TOOLCHANGE;
+}
+
 static void lcd_toggle_wipe()
 {
     dual_state ^= DUAL_WIPE;
@@ -715,7 +720,12 @@ static const menu_t & get_dualstate_menuoption(uint8_t nr, menu_t &opt)
     }
     else if (nr == index++)
     {
-        // enable wipe mode
+        // enable toolchange scripts
+        opt.setData(MENU_NORMAL, lcd_toggle_toolchange);
+    }
+    else if (nr == index++)
+    {
+        // enable wipe script
         opt.setData(MENU_NORMAL, lcd_toggle_wipe);
     }
     return opt;
@@ -769,9 +779,9 @@ static void drawDualStateSubmenu(uint8_t nr, uint8_t &flags)
             lcd_lib_draw_string_leftP(5, PSTR("Dual mode"));
             flags |= MENU_STATUSLINE;
         }
-        lcd_lib_draw_string_leftP(20, PSTR("Dual mode:"));
+        lcd_lib_draw_string_leftP(17, PSTR("Dual mode:"));
         LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*13
-                                , 20
+                                , 17
                                 , LCD_CHAR_SPACING*7
                                 , LCD_CHAR_HEIGHT
                                 , IS_DUAL_ENABLED ? PSTR("enabled") : PSTR("off")
@@ -783,12 +793,29 @@ static void drawDualStateSubmenu(uint8_t nr, uint8_t &flags)
         // wipe device
         if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
         {
+            lcd_lib_draw_string_leftP(5, PSTR("Toolchange script"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(28, PSTR("Toolchange:"));
+        LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*13
+                                , 28
+                                , LCD_CHAR_SPACING*7
+                                , LCD_CHAR_HEIGHT
+                                , IS_TOOLCHANGE_ENABLED ? PSTR("enabled") : PSTR("off")
+                                , ALIGN_LEFT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // wipe device
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
             lcd_lib_draw_string_leftP(5, PSTR("Wipe device"));
             flags |= MENU_STATUSLINE;
         }
-        lcd_lib_draw_string_leftP(32, PSTR("Wipe device:"));
+        lcd_lib_draw_string_leftP(39, PSTR("Wipe device:"));
         LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*13
-                                , 32
+                                , 39
                                 , LCD_CHAR_SPACING*7
                                 , LCD_CHAR_HEIGHT
                                 , IS_WIPE_ENABLED ? PSTR("enabled") : PSTR("off")
@@ -802,7 +829,7 @@ static void lcd_menu_dualstate()
     lcd_basic_screen();
     lcd_lib_draw_hline(3, 124, 13);
 
-    uint8_t len = IS_DUAL_ENABLED ? 4 : 3;
+    uint8_t len = IS_DUAL_ENABLED ? 5 : 3;
     menu.process_submenu(get_dualstate_menuoption, len);
 
     uint8_t flags = 0;

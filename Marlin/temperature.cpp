@@ -38,8 +38,8 @@
 #include "Sd2Card.h"
 #include "cardreader.h"
 
-#define HEATER_TIMEOUT_1 (1000L * 120L)  // 120 seconds
-#define HEATER_TIMEOUT_2 (1000L * 300L)  // 300 seconds
+#define HEATER_TIMEOUT_IDLE (1000L * 180L)  // 180 seconds
+#define HEATER_TIMEOUT_OFF (1000L * 360L)  // 360 seconds
 
 //===========================================================================
 //=============================public variables============================
@@ -435,14 +435,14 @@ void manage_heater()
   for(int8_t e = 0; e < EXTRUDERS; ++e)
   {
     target_temp = target_temperature[e];
-    if ((printing_state != PRINT_STATE_HEATING) & (IS_SD_PRINTING || (m - lastSerialCommandTime < SERIAL_CONTROL_TIMEOUT)))
+    if ((printing_state != PRINT_STATE_HEATING) && (IS_SD_PRINTING || (m - lastSerialCommandTime < SERIAL_CONTROL_TIMEOUT)))
     {
         // reduce target temp of inactive nozzle during printing
-        if ((extruder_lastused[e] + HEATER_TIMEOUT_2) < m)
+        if ((extruder_lastused[e] + HEATER_TIMEOUT_OFF) < m)
         {
             target_temp = 0;
         }
-        else if ((extruder_lastused[e] + HEATER_TIMEOUT_1) < m)
+        else if ((extruder_lastused[e] + HEATER_TIMEOUT_IDLE) < m)
         {
             target_temp = target_temp*4/5;
             target_temp -= target_temp % 10;

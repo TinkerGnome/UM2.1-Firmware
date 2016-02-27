@@ -61,15 +61,6 @@ static void abortPrint()
     postMenuCheck = NULL;
     doCooldown();
 
-    if (card.sdprinting)
-    {
-    	// we're not printing any more
-        card.sdprinting = false;
-    }
-    //If we where paused, make sure we abort that pause. Else strange things happen: https://github.com/Ultimaker/Ultimaker2Marlin/issues/32
-    card.pause = false;
-    pauseRequested = false;
-
     //enquecommand_P(PSTR("M401"));
     quickStop();
     for (uint8_t i=0; i<NUM_AXIS; ++i)
@@ -94,7 +85,7 @@ static void abortPrint()
     }
 
 #if EXTRUDERS > 1
-    switch_extruder(0);
+    enquecommand_P(PSTR("T0"));
 #endif // EXTRUDERS
 
     if (current_position[Z_AXIS] > Z_MAX_POS - 30)
@@ -107,8 +98,26 @@ static void abortPrint()
         enquecommand_P(PSTR("G28"));
     }
 
+    if (card.sdprinting)
+    {
+    	// we're not printing any more
+        card.sdprinting = false;
+    }
+    //If we where paused, make sure we abort that pause. Else strange things happen: https://github.com/Ultimaker/Ultimaker2Marlin/issues/32
+    card.pause = false;
+    pauseRequested = false;
+
     enquecommand_P(PSTR("M84"));
     lifetime_stats_print_end();
+
+    // reset defaults
+    feedmultiply = 100;
+    fanSpeedPercent = 100;
+    for(uint8_t e=0; e<EXTRUDERS; e++)
+    {
+        volume_to_filament_length[e] = 1.0;
+        extrudemultiply[e] = 100;
+    }
 }
 
 static void checkPrintFinished()

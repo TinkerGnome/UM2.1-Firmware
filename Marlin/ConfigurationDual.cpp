@@ -21,7 +21,7 @@
 #define WIPE_X_POSITION     90.5
 #define WIPE_Y_POSITION     24.0
 
-uint8_t dual_state = DUAL_ENABLED | DUAL_WIPE;
+uint8_t dual_state = DUAL_ENABLED | DUAL_TOOLCHANGE | DUAL_WIPE;
 float add_homeing_z2;
 float dock_position[2];
 float wipe_position[2];
@@ -78,7 +78,7 @@ void Dual_RetrieveSettings()
     }
     if (!bValid || version < 2)
     {
-        dual_state = DUAL_ENABLED | DUAL_WIPE;
+        dual_state = DUAL_ENABLED | DUAL_WIPE | DUAL_TOOLCHANGE;
         Dual_StoreState();
 
         for (uint8_t e=0; e<EXTRUDERS; ++e)

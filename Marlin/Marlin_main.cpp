@@ -207,7 +207,7 @@ int EtoPPressure=0;
 bool position_error;
 
 #ifdef FWRETRACT
-  uint8_t retract_state=AUTO_RETRACT;
+  uint8_t retract_state=0;
   float retract_length=4.5, retract_feedrate=25*60, retract_zlift=0.0;
   float retract_recover_length[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0.0f, 0.0f, 0.0f);
   float retract_recover_feedrate[EXTRUDERS];
@@ -558,10 +558,10 @@ static void get_command()
       if(!comment_mode){
         comment_mode = false; //for new command
         fromsd[bufindw] = false;
-        if(strchr(cmdbuffer[bufindw], 'N') != NULL)
+        strchr_pointer = strchr(cmdbuffer[bufindw], 'N');
+        if(strchr_pointer)
         {
-          strchr_pointer = strchr(cmdbuffer[bufindw], 'N');
-          gcode_N = (strtol(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL, 10));
+          gcode_N = (strtol(strchr_pointer + 1, NULL, 10));
           if(gcode_N != gcode_LastN+1 && (strstr_P(cmdbuffer[bufindw], PSTR("M110")) == NULL) ) {
             SERIAL_ERROR_START;
             SERIAL_ERRORPGM(MSG_ERR_LINE_NO);
@@ -572,14 +572,14 @@ static void get_command()
             return;
           }
 
-          if(strchr(cmdbuffer[bufindw], '*') != NULL)
+          strchr_pointer = strchr(cmdbuffer[bufindw], '*');
+          if(strchr_pointer)
           {
             byte checksum = 0;
             byte count = 0;
             while(cmdbuffer[bufindw][count] != '*') checksum = checksum^cmdbuffer[bufindw][count++];
-            strchr_pointer = strchr(cmdbuffer[bufindw], '*');
 
-            if( (int)(strtod(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL)) != checksum) {
+            if( (int)(strtod(strchr_pointer + 1, NULL)) != checksum) {
               SERIAL_ERROR_START;
               SERIAL_ERRORPGM(MSG_ERR_CHECKSUM_MISMATCH);
               SERIAL_ERRORLN(gcode_LastN);
@@ -613,9 +613,10 @@ static void get_command()
             return;
           }
         }
-        if((strchr(cmdbuffer[bufindw], 'G') != NULL)){
-          strchr_pointer = strchr(cmdbuffer[bufindw], 'G');
-          switch((int)((strtod(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL)))){
+        strchr_pointer = strchr(cmdbuffer[bufindw], 'G');
+        if(strchr_pointer) {
+
+          switch((int)((strtod(strchr_pointer + 1, NULL)))){
           case 0:
           case 1:
           case 2:
@@ -639,7 +640,7 @@ static void get_command()
         }
 #ifdef ENABLE_ULTILCD2
         strchr_pointer = strchr(cmdbuffer[bufindw], 'M');
-        if (strtol(&cmdbuffer[bufindw][strchr_pointer - cmdbuffer[bufindw] + 1], NULL, 10) != 105)
+        if (strchr_pointer && strtol(strchr_pointer + 1, NULL, 10) != 105)
             lastSerialCommandTime = millis();
 #endif
         bufindw = (bufindw + 1)%BUFSIZE;
@@ -2507,7 +2508,7 @@ void ClearToSend()
 void get_coordinates()
 {
 #ifdef FWRETRACT
-    bool seen[4]={false,false,false,false};
+    uint8_t seen=0;
 #endif
     for(uint8_t i=0; i < NUM_AXIS; ++i)
     {
@@ -2515,7 +2516,7 @@ void get_coordinates()
         {
             destination[i] = (float)code_value() + ((axis_relative_state & (1 << i)) || (axis_relative_state & RELATIVE_MODE))*current_position[i];
 #ifdef FWRETRACT
-            seen[i]=true;
+            seen |= (1 << i);
 #endif
         }
         else if (printing_state < PRINT_STATE_TOOLCHANGE)
@@ -2524,51 +2525,66 @@ void get_coordinates()
         }
     }
 
-    // Mark2-Dual: toolchange moves are complete: back to normal
-    if (printing_state == PRINT_STATE_TOOLREADY)
-    {
-        printing_state = PRINT_STATE_NORMAL;
-    }
-
     if(code_seen('F'))
     {
         next_feedrate = code_value();
         if(next_feedrate > 0.0f) feedrate = next_feedrate;
     }
+
 #ifdef FWRETRACT
-    if(AUTORETRACT_ENABLED)
+    if(seen == (1 << E_AXIS))
     {
-        if( !(seen[X_AXIS] || seen[Y_AXIS] || seen[Z_AXIS]) && seen[E_AXIS])
+        // e axis only
+        float echange=destination[E_AXIS]-current_position[E_AXIS];
+        if (!RETRACTED(active_extruder) &&(echange<-MIN_RETRACT)) //retract
         {
-            float echange=destination[E_AXIS]-current_position[E_AXIS];
-            if(echange<-MIN_RETRACT) //retract
+            SET_RETRACT_STATE(active_extruder);
+            retract_recover_length[active_extruder] = -echange;
+            if (AUTORETRACT_ENABLED)
             {
-                if(!RETRACTED(active_extruder))
-                {
-                    destination[Z_AXIS]+=retract_zlift; //not sure why chaninging current_position negatively does not work.
-                    //if slicer retracted by echange=-1mm and you want to retract 3mm, corrrectede=-2mm additionally
-                    float correctede=-echange-retract_length;
+                destination[Z_AXIS]+=retract_zlift; //not sure why chaninging current_position negatively does not work.
+                //if slicer retracted by echange=-1mm and you want to retract 3mm, corrrectede=-2mm additionally
+                float correctede=-echange-retract_length;
                     //to generate the additional steps, not the destination is changed, but inversely the current position
-                    current_position[E_AXIS]-=correctede;
-                    feedrate=retract_feedrate;
-                    SET_RETRACT_STATE(active_extruder);
-                }
+                current_position[E_AXIS]-=correctede;
+                retract_recover_length[active_extruder] -= correctede;
+                feedrate=retract_feedrate;
             }
-            else if(echange>MIN_RETRACT) //retract_recover
+        }
+        else if ((RETRACTED(active_extruder)) && (echange>MIN_RETRACT)) //retract_recover
+        {
+            CLEAR_RETRACT_STATE(active_extruder);
+            if (printing_state == PRINT_STATE_TOOLREADY)
             {
-                if(RETRACTED(active_extruder))
-                {
-                    current_position[Z_AXIS]-=retract_zlift;
-                    //if slicer retracted_recovered by echange=+1mm and you want to retract_recover 3mm, corrrectede=2mm additionally
-                    float correctede=-echange+1*retract_length+retract_recover_length[active_extruder]; //total unretract=retract_length+retract_recover_length[surplus]
-                    current_position[E_AXIS]+=correctede; //to generate the additional steps, not the destination is changed, but inversely the current position
-                    feedrate=retract_recover_feedrate[active_extruder];
-                    CLEAR_RETRACT_STATE(active_extruder);
-                }
+                // retraction recover after tool change
+                destination[E_AXIS] = current_position[E_AXIS] + retract_recover_length[active_extruder];
+                feedrate=retract_recover_feedrate[active_extruder];
+            }
+            else if (AUTORETRACT_ENABLED)
+            {
+                current_position[Z_AXIS]-=retract_zlift;
+                //if slicer retracted_recovered by echange=+1mm and you want to retract_recover 3mm, corrrectede=2mm additionally
+                float correctede=-echange+1*retract_length+retract_recover_length[active_extruder]; //total unretract=retract_length+retract_recover_length[surplus]
+                current_position[E_AXIS]+=correctede; //to generate the additional steps, not the destination is changed, but inversely the current position
+                feedrate=retract_recover_feedrate[active_extruder];
             }
         }
     }
 #endif //FWRETRACT
+
+//    if ((printing_state == PRINT_STATE_TOOLREADY) && (seen & E_AXIS) && RETRACTED(active_extruder))
+//    {
+//        // first extrusion after tool change -> recover the retraction
+//        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]+retract_recover_length[active_extruder], retract_recover_feedrate[active_extruder]/60, active_extruder);
+//        destination[E_AXIS] += retract_recover_length[active_extruder];
+//        CLEAR_RETRACT_STATE(active_extruder);
+//    }
+
+    // Mark2-Dual: toolchange moves are complete: back to normal
+    if (printing_state == PRINT_STATE_TOOLREADY)
+    {
+        printing_state = PRINT_STATE_NORMAL;
+    }
 }
 
 static void get_arc_coordinates()
@@ -2956,6 +2972,13 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
     }
     // finish planned moves
     st_synchronize();
+
+//SERIAL_PROTOCOLPGM("Z:");
+//SERIAL_PROTOCOL(current_position[Z_AXIS]);
+//SERIAL_EOL;
+//SERIAL_PROTOCOLPGM("E:");
+//SERIAL_PROTOCOL(current_position[E_AXIS]);
+//SERIAL_EOL;
 
     if IS_DUAL_ENABLED
     {

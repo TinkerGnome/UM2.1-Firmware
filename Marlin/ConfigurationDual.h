@@ -17,6 +17,7 @@
 // dual state flags
 #define DUAL_ENABLED         1
 #define DUAL_WIPE            2
+#define DUAL_TOOLCHANGE      4
 
 extern uint8_t dual_state;
 extern float add_homeing_z2;
@@ -55,6 +56,7 @@ FORCE_INLINE void Dual_StoreRetract() {}
 #endif
 
 #define IS_DUAL_ENABLED (dual_state & DUAL_ENABLED)
+#define IS_TOOLCHANGE_ENABLED ((dual_state & DUAL_ENABLED) && (dual_state & DUAL_TOOLCHANGE))
 #define IS_WIPE_ENABLED ((dual_state & DUAL_ENABLED) && (dual_state & DUAL_WIPE))
 
 #endif //EXTRUDERS
