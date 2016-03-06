@@ -13,7 +13,7 @@
 // in the functions below, also increment the version number. This makes sure that
 // the default values are used whenever there is a change to the data, to prevent
 // wrong data being written to the variables.
-#define STORE_DUAL_VERSION 2
+#define STORE_DUAL_VERSION 3
 
 #define DOCK_X_POSITION    220.0
 #define DOCK_Y_POSITION     41.0
@@ -27,6 +27,7 @@ float dock_position[2];
 float wipe_position[2];
 float toolchange_retractlen[EXTRUDERS];
 float toolchange_retractfeedrate[EXTRUDERS];
+float toolchange_prime[EXTRUDERS];
 
 #ifdef EEPROM_SETTINGS
 static bool Dual_RetrieveVersion(uint16_t &version)
@@ -86,6 +87,20 @@ void Dual_RetrieveSettings()
             toolchange_retractlen[e]      = 16.0f;
             toolchange_retractfeedrate[e] = retract_feedrate;
         }
+    }
+    else
+    {
+        dual_state = eeprom_read_byte((uint8_t*)EEPROM_DUAL_STATE);
+        eeprom_read_block(toolchange_retractlen, (uint8_t*)EEPROM_DUAL_RETRACTLEN, sizeof(toolchange_retractlen));
+        eeprom_read_block(toolchange_retractfeedrate, (uint8_t*)EEPROM_DUAL_RETRACTSPEED, sizeof(toolchange_retractfeedrate));
+    }
+
+    if (!bValid || version < 3)
+    {
+        for (uint8_t e=0; e<EXTRUDERS; ++e)
+        {
+            toolchange_prime[e] = toolchange_retractlen[e] * 0.15;
+        }
         Dual_StoreRetract();
 
         // write version
@@ -96,9 +111,7 @@ void Dual_RetrieveSettings()
     }
     else
     {
-        dual_state = eeprom_read_byte((uint8_t*)EEPROM_DUAL_STATE);
-        eeprom_read_block(toolchange_retractlen, (uint8_t*)EEPROM_DUAL_RETRACTLEN, sizeof(toolchange_retractlen));
-        eeprom_read_block(toolchange_retractfeedrate, (uint8_t*)EEPROM_DUAL_RETRACTSPEED, sizeof(toolchange_retractfeedrate));
+        eeprom_read_block(toolchange_prime, (uint8_t*)EEPROM_DUAL_EXTRAPRIME, sizeof(toolchange_prime));
     }
     Dual_PrintSettings();
 }

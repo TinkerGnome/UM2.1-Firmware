@@ -306,7 +306,7 @@ void lcd_select_nozzle(menuFunc_t nextMenu, menuFunc_t callbackOnSelect, menuFun
         uint8_t index(SELECTED_MAIN_MENU_ITEM());
         if (nextMenu)
         {
-            lcd_replace_menu(nextMenu, ENCODER_NO_SELECTION);
+            lcd_replace_menu(nextMenu, previousEncoderPos);
         }
         if (index < 2)
         {

@@ -224,6 +224,7 @@ extern unsigned char fanSpeedSoftPwm;
 #endif
 
 #ifdef FWRETRACT
+#define EXTRUDER_PREHEAT 8
 #define AUTO_RETRACT 128
 extern uint8_t retract_state;
 extern float retract_length, retract_feedrate, retract_zlift;

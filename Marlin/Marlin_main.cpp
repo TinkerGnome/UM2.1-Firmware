@@ -270,6 +270,9 @@ uint8_t Stopped = false;
 static void get_command();
 static void get_arc_coordinates();
 static bool setTargetedHotend(uint16_t code);
+static float code_value();
+static long code_value_long();
+static bool code_seen(char code);
 
 void serial_echopair_P(const char *s_P, float v)
     { serialprintPGM(s_P); SERIAL_ECHO(v); }
@@ -335,8 +338,8 @@ void enquecommand_P(const char *cmd)
     SERIAL_ECHOPGM("enqueing \"");
     SERIAL_ECHO(cmdbuffer[bufindw]);
     SERIAL_ECHOLNPGM("\"");
-    bufindw= (bufindw + 1)%BUFSIZE;
-    buflen += 1;
+    bufindw = (bufindw + 1)%BUFSIZE;
+    ++buflen;
   }
 }
 
@@ -491,11 +494,32 @@ void setup()
   #endif
 }
 
+#if (EXTRUDERS > 1) && defined(FWRETRACT)
+// check, if a toolchange command appeared and set a flag for nozzle re-heating
+static void checkToolchange(const char *cmd)
+{
+    if (strchr(cmd, 'G') || strchr(cmd, 'M'))
+        return;
+
+    strchr_pointer = strchr(cmd, 'T');
+    if(strchr_pointer)
+    {
+        uint8_t e = code_value_long();
+        if ((e < EXTRUDERS) && (e != active_extruder))
+        {
+            // set reheat flag
+            retract_state |= (EXTRUDER_PREHEAT << e);
+        }
+    }
+}
+#endif
 
 void loop()
 {
   if(buflen < (BUFSIZE-1))
+  {
     get_command();
+  }
   #ifdef SDSUPPORT
   card.checkautostart(false);
   #endif
@@ -638,6 +662,13 @@ static void get_command()
           }
 
         }
+#if (EXTRUDERS > 1) && defined(FWRETRACT)
+        // check, if a toolchange command appeared and set a flag for nozzle re-heating
+        else
+        {
+            checkToolchange(cmdbuffer[bufindw]);
+        }
+#endif
 #ifdef ENABLE_ULTILCD2
         strchr_pointer = strchr(cmdbuffer[bufindw], 'M');
         if (strchr_pointer && strtol(strchr_pointer + 1, NULL, 10) != 105)
@@ -719,6 +750,10 @@ static void get_command()
         return; //if empty line
       }
       cmdbuffer[bufindw][serial_count] = 0; //terminate string
+#if (EXTRUDERS > 1) && defined(FWRETRACT)
+        // check, if a toolchange command appeared and set a flag for nozzle re-heating
+        checkToolchange(cmdbuffer[bufindw]);
+#endif
 //      if(!comment_mode){
         fromsd[bufindw] = true;
         buflen += 1;
@@ -740,17 +775,17 @@ static void get_command()
 }
 
 
-float code_value()
+static float code_value()
 {
   return (strtod(strchr_pointer + 1, NULL));
 }
 
-long code_value_long()
+static long code_value_long()
 {
   return (strtol(strchr_pointer + 1, NULL, 10));
 }
 
-bool code_seen(char code)
+static bool code_seen(char code)
 {
   strchr_pointer = strchr(current_command, code);
   return (strchr_pointer != NULL);  //Return True if a character was found
@@ -899,9 +934,9 @@ static void homeaxis(int axis) {
 static void print_heaterstates()
 {
     SERIAL_PROTOCOLPGM(" T:");
-    SERIAL_PROTOCOL_F(degHotend(tmp_extruder), 1);
+    SERIAL_PROTOCOL_F(degHotend(0), 1);
     SERIAL_PROTOCOLPGM(" /");
-    SERIAL_PROTOCOL_F(degTargetHotend(tmp_extruder), 1);
+    SERIAL_PROTOCOL_F(degTargetHotend(0), 1);
 
     #if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
       SERIAL_PROTOCOLPGM(" B:");
@@ -1048,6 +1083,9 @@ void process_command(const char *strCmd)
       break;
       #endif //FWRETRACT
     case 28: //G28 Home all Axis one at a time
+      if (printing_state == PRINT_STATE_HOMING)
+        break;
+
       printing_state = PRINT_STATE_HOMING;
       saved_feedrate = feedrate;
       saved_feedmultiply = feedmultiply;
@@ -1304,7 +1342,7 @@ void process_command(const char *strCmd)
     case 23: //M23 - Select file
       starpos = (strchr(strchr_pointer + 4,'*'));
       if(starpos!=NULL)
-        *(starpos-1)='\0';
+        *(starpos)='\0';
       card.openFile(strchr_pointer + 4,true);
       break;
     case 24: //M24 - Start SD print
@@ -2438,7 +2476,7 @@ void process_command(const char *strCmd)
           feedrate = next_feedrate;
         }
       }
-      if (changeExtruder(tmp_extruder, true))
+      if (changeExtruder(tmp_extruder, position_state & KNOWNPOS_Z))
       {
         // Move to the old position if 'F' was in the parameters
         if(make_move && Stopped == false)
@@ -2554,18 +2592,18 @@ void get_coordinates()
         else if ((RETRACTED(active_extruder)) && (echange>MIN_RETRACT)) //retract_recover
         {
             CLEAR_RETRACT_STATE(active_extruder);
-            if (printing_state == PRINT_STATE_TOOLREADY)
-            {
-                // retraction recover after tool change
-                destination[E_AXIS] = current_position[E_AXIS] + retract_recover_length[active_extruder];
-                feedrate=retract_recover_feedrate[active_extruder];
-            }
-            else if (AUTORETRACT_ENABLED)
+            if (AUTORETRACT_ENABLED)
             {
                 current_position[Z_AXIS]-=retract_zlift;
                 //if slicer retracted_recovered by echange=+1mm and you want to retract_recover 3mm, corrrectede=2mm additionally
                 float correctede=-echange+1*retract_length+retract_recover_length[active_extruder]; //total unretract=retract_length+retract_recover_length[surplus]
                 current_position[E_AXIS]+=correctede; //to generate the additional steps, not the destination is changed, but inversely the current position
+                feedrate=retract_recover_feedrate[active_extruder];
+            }
+            else // if (printing_state == PRINT_STATE_TOOLREADY)
+            {
+                // retraction recover after tool change
+                destination[E_AXIS] = current_position[E_AXIS] + retract_recover_length[active_extruder];
                 feedrate=retract_recover_feedrate[active_extruder];
             }
         }
@@ -3035,6 +3073,12 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
         // Set the new active extruder and restore position
         active_extruder = nextExtruder;
+
+#ifdef FWRETRACT
+        // clear reheat flag
+        retract_state &= ~(EXTRUDER_PREHEAT << active_extruder);
+#endif // FWRETRACT
+
         plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 
         if (moveZ && IS_WIPE_ENABLED)
@@ -3076,6 +3120,12 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         }
         // Set the new active extruder and position
         active_extruder = nextExtruder;
+
+#ifdef FWRETRACT
+        // clear reheat flag
+        retract_state &= ~(EXTRUDER_PREHEAT << active_extruder);
+#endif // FWRETRACT
+
         plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
     }
     return true;

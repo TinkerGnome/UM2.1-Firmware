@@ -84,10 +84,6 @@ static void abortPrint()
         primed = false;
     }
 
-#if EXTRUDERS > 1
-    enquecommand_P(PSTR("T0"));
-#endif // EXTRUDERS
-
     if (current_position[Z_AXIS] > Z_MAX_POS - 30)
     {
         enquecommand_P(PSTR("G28 X0 Y0"));
@@ -97,6 +93,23 @@ static void abortPrint()
     {
         enquecommand_P(PSTR("G28"));
     }
+
+
+//#if EXTRUDERS > 1
+//    if (active_extruder)
+//    {
+//        cmd_synchronize();
+//        printing_state = PRINT_STATE_NORMAL;
+//        uint8_t old_dual_state = dual_state;
+//        dual_state &= ~DUAL_WIPE;
+//        enquecommand_P(PSTR("T0"));
+//        cmd_synchronize();
+//        st_synchronize();
+//        dual_state = old_dual_state;
+//        printing_state = PRINT_STATE_NORMAL;
+//        enquecommand_P(PSTR("G28 X0 Y0"));
+//    }
+//#endif // EXTRUDERS
 
     if (card.sdprinting)
     {
@@ -164,6 +177,10 @@ static void doStartPrint()
 
     for(uint8_t e = 0; e<EXTRUDERS; e++)
     {
+#ifdef FWRETRACT
+        // clear reheat flag
+        retract_state &= ~(EXTRUDER_PREHEAT << e);
+#endif
         if (!LCD_DETAIL_CACHE_MATERIAL(e))
         {
         	// don't prime the extruder if it isn't used in the (Ulti)gcode
@@ -847,7 +864,15 @@ static char* tune_item_callback(uint8_t nr)
 #endif
     else if (nr == 4 + BED_MENU_OFFSET + EXTRUDERS * 2)
         strcpy_P(c, PSTR("Retraction"));
+#if EXTRUDERS > 1
     else if (nr == 5 + BED_MENU_OFFSET + EXTRUDERS * 2)
+        strcpy_P(c, PSTR("Toolchange retract 1"));
+    else if (nr == 6 + BED_MENU_OFFSET + EXTRUDERS * 2)
+        strcpy_P(c, PSTR("Toolchange retract 2"));
+    else if (nr == 7 + BED_MENU_OFFSET + EXTRUDERS * 2)
+        strcpy_P(c, PSTR("Extruder offset"));
+#endif
+    else if (nr == 2 + BED_MENU_OFFSET + EXTRUDERS * 5)
         strcpy_P(c, PSTR("LED Brightness"));
     return c;
 }
@@ -887,7 +912,7 @@ static void tune_item_details_callback(uint8_t nr)
     else if (nr == 5 + BED_MENU_OFFSET + EXTRUDERS)
         c = int_to_string(extrudemultiply[1], c, PSTR("%"));
 #endif
-    else if (nr == 5 + BED_MENU_OFFSET + 2*EXTRUDERS)
+    else if (nr == 2 + BED_MENU_OFFSET + 5*EXTRUDERS)
     {
         c = int_to_string(led_brightness_level, c, PSTR("%"));
         if (led_mode == LED_MODE_ALWAYS_ON ||  led_mode == LED_MODE_WHILE_PRINTING || led_mode == LED_MODE_BLINK_ON_DONE)
@@ -945,11 +970,13 @@ void lcd_menu_print_tune_heatup_nozzle1()
     lcd_lib_draw_string_center(30, buffer);
     lcd_lib_update_screen();
 }
+
 #endif
+
 
 static void lcd_menu_print_tune()
 {
-    lcd_scroll_menu(PSTR("TUNE"), 6 + BED_MENU_OFFSET + EXTRUDERS * 2, tune_item_callback, tune_item_details_callback);
+    lcd_scroll_menu(PSTR("TUNE"), 3 + BED_MENU_OFFSET + EXTRUDERS * 5, tune_item_callback, tune_item_details_callback);
     if (lcd_lib_button_pressed)
     {
         if (IS_SELECTED_SCROLL(0))
@@ -975,15 +1002,34 @@ static void lcd_menu_print_tune()
 #endif
         else if (IS_SELECTED_SCROLL(3 + BED_MENU_OFFSET + EXTRUDERS))
             LCD_EDIT_SETTING_BYTE_PERCENT(fanSpeed, "Fan speed", "%", 0, 100);
-        else if (IS_SELECTED_SCROLL(4 + BED_MENU_OFFSET + EXTRUDERS))
-            LCD_EDIT_SETTING(extrudemultiply[0], "Material flow", "%", 10, 1000);
 #if EXTRUDERS > 1
+        else if (IS_SELECTED_SCROLL(4 + BED_MENU_OFFSET + EXTRUDERS))
+            LCD_EDIT_SETTING(extrudemultiply[0], "Material flow 1", "%", 10, 1000);
         else if (IS_SELECTED_SCROLL(5 + BED_MENU_OFFSET + EXTRUDERS))
             LCD_EDIT_SETTING(extrudemultiply[1], "Material flow 2", "%", 10, 1000);
+#else
+        else if (IS_SELECTED_SCROLL(4 + BED_MENU_OFFSET + EXTRUDERS))
+            LCD_EDIT_SETTING(extrudemultiply[0], "Material flow", "%", 10, 1000);
 #endif
         else if (IS_SELECTED_SCROLL(4 + BED_MENU_OFFSET + EXTRUDERS * 2))
             lcd_change_to_menu(lcd_menu_print_tune_retraction);
+#if EXTRUDERS > 1
         else if (IS_SELECTED_SCROLL(5 + BED_MENU_OFFSET + EXTRUDERS * 2))
+        {
+            // tmp_extruder = 0;
+            lcd_cache[0] = 0;
+            lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1));
+        }
+        else if (IS_SELECTED_SCROLL(6 + BED_MENU_OFFSET + EXTRUDERS * 2))
+        {
+            // tmp_extruder = 1;
+            lcd_cache[0] = 1;
+            lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1));
+        }
+        else if (IS_SELECTED_SCROLL(7 + BED_MENU_OFFSET + EXTRUDERS * 2))
+            lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
+#endif
+        else if (IS_SELECTED_SCROLL(2 + BED_MENU_OFFSET + EXTRUDERS * 5))
             LCD_EDIT_SETTING(led_brightness_level, "Brightness", "%", 0, 100);
     }
 }

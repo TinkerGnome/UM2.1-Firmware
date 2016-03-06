@@ -195,7 +195,7 @@ static void drawExtruderOffsetSubmenu(uint8_t nr, uint8_t &flags)
     }
 }
 
-static void lcd_menu_extruderoffset()
+void lcd_menu_extruderoffset()
 {
     lcd_basic_screen();
     lcd_lib_draw_hline(3, 124, 13);
@@ -490,24 +490,19 @@ static void lcd_menu_wipeposition()
 
 //////////////////
 
-static void lcd_tcretractlen_e0()
+static void lcd_tune_tcretractlen()
 {
-    lcd_tune_value(toolchange_retractlen[0], 0.0f, 50.0, 0.1f);
+    lcd_tune_value(toolchange_retractlen[lcd_cache[0]], 0.0f, 50.0, 0.1f);
 }
 
-static void lcd_tcretractlen_e1()
+static void lcd_tune_tcretractfeed()
 {
-    lcd_tune_value(toolchange_retractlen[1], 0.0f, 50.0, 0.1f);
+    lcd_tune_value(toolchange_retractfeedrate[lcd_cache[0]], 0.0f, max_feedrate[E_AXIS]*60, 60.0f);
 }
 
-static void lcd_tcretractfeed_e0()
+static void lcd_tune_tcprime()
 {
-    lcd_tune_value(toolchange_retractfeedrate[0], 0.0f, max_feedrate[E_AXIS]*60, 60.0f);
-}
-
-static void lcd_tcretractfeed_e1()
-{
-    lcd_tune_value(toolchange_retractfeedrate[1], 0.0f, max_feedrate[E_AXIS]*60, 60.0f);
+    lcd_tune_value(toolchange_prime[lcd_cache[0]], 0.0f, 20.0f, 0.1f);
 }
 
 // create menu options for "axis steps/mm"
@@ -527,22 +522,17 @@ static const menu_t & get_tcretract_menuoption(uint8_t nr, menu_t &opt)
     else if (nr == index++)
     {
         // nozzle 1 retract len
-        opt.setData(MENU_INPLACE_EDIT, lcd_tcretractlen_e0, 2);
+        opt.setData(MENU_INPLACE_EDIT, lcd_tune_tcretractlen, 2);
     }
     else if (nr == index++)
     {
         // nozzle 1 retract feedrate
-        opt.setData(MENU_INPLACE_EDIT, lcd_tcretractfeed_e0, 2);
+        opt.setData(MENU_INPLACE_EDIT, lcd_tune_tcretractfeed, 2);
     }
     else if (nr == index++)
     {
         // nozzle 2 retract len
-        opt.setData(MENU_INPLACE_EDIT, lcd_tcretractlen_e1, 2);
-    }
-    else if (nr == index++)
-    {
-        // nozzle 2 retract feedrate
-        opt.setData(MENU_INPLACE_EDIT, lcd_tcretractfeed_e1, 2);
+        opt.setData(MENU_INPLACE_EDIT, lcd_tune_tcprime, 2);
     }
     return opt;
 }
@@ -590,14 +580,32 @@ static void drawTCRetractSubmenu(uint8_t nr, uint8_t &flags)
     }
     else if (nr == index++)
     {
-        // nozzle 1 len
+        // retract len
         if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
         {
             lcd_lib_draw_string_leftP(5, PSTR("Retract len (mm)"));
             flags |= MENU_STATUSLINE;
         }
-        lcd_lib_draw_string_leftP(27, PSTR("Len"));
-        float_to_string(toolchange_retractlen[0], buffer, NULL);
+        lcd_lib_draw_string_leftP(17, PSTR("Len"));
+        float_to_string(toolchange_retractlen[lcd_cache[0]], buffer, NULL);
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*7
+                                , 17
+                                , LCD_CHAR_SPACING*5
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // retract feedrate
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Retract speed (mm/s)"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(27, PSTR("Speed"));
+        float_to_string(toolchange_retractfeedrate[lcd_cache[0]]/60, buffer, NULL);
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*7
                                 , 27
                                 , LCD_CHAR_SPACING*5
@@ -608,49 +616,15 @@ static void drawTCRetractSubmenu(uint8_t nr, uint8_t &flags)
     }
     else if (nr == index++)
     {
-        // nozzle 1 feedrate
+        // extra prime len
         if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
         {
-            lcd_lib_draw_string_leftP(5, PSTR("Retract speed (mm/s)"));
+            lcd_lib_draw_string_leftP(5, PSTR("Extra priming (mm)"));
             flags |= MENU_STATUSLINE;
         }
-        lcd_lib_draw_string_leftP(37, PSTR("Speed"));
-        float_to_string(toolchange_retractfeedrate[0]/60, buffer, NULL);
+        lcd_lib_draw_string_leftP(37, PSTR("Prime"));
+        float_to_string(toolchange_prime[lcd_cache[0]], buffer, NULL);
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*7
-                                , 37
-                                , LCD_CHAR_SPACING*5
-                                , LCD_CHAR_HEIGHT
-                                , buffer
-                                , ALIGN_RIGHT | ALIGN_VCENTER
-                                , flags);
-    }
-    else if (nr == index++)
-    {
-        // nozzle 2 len
-        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("Retract len (mm)"));
-            flags |= MENU_STATUSLINE;
-        }
-        float_to_string(toolchange_retractlen[1], buffer, NULL);
-        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*14
-                                , 27
-                                , LCD_CHAR_SPACING*5
-                                , LCD_CHAR_HEIGHT
-                                , buffer
-                                , ALIGN_RIGHT | ALIGN_VCENTER
-                                , flags);
-    }
-    else if (nr == index++)
-    {
-        // nozzle 2 feedrate
-        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("Retract speed (mm/s)"));
-            flags |= MENU_STATUSLINE;
-        }
-        float_to_string(toolchange_retractfeedrate[1]/60, buffer, NULL);
-        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*14
                                 , 37
                                 , LCD_CHAR_SPACING*5
                                 , LCD_CHAR_HEIGHT
@@ -660,18 +634,21 @@ static void drawTCRetractSubmenu(uint8_t nr, uint8_t &flags)
     }
 }
 
-static void lcd_menu_tcretract()
+void lcd_menu_tune_tcretract()
 {
     lcd_basic_screen();
     lcd_lib_draw_hline(3, 124, 13);
-    lcd_lib_draw_string_leftP(17, PSTR("Nozzle"));
-    lcd_lib_draw_stringP(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*8,  17, PSTR("(1)"));
-    lcd_lib_draw_stringP(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*15, 17, PSTR("(2)"));
 
-    menu.process_submenu(get_tcretract_menuoption, 6);
+    char buffer[4] = {0};
+    strcpy_P(buffer, PSTR("("));
+    int_to_string(lcd_cache[0]+1, buffer+1, PSTR(")"));
+    lcd_lib_draw_string(LCD_GFX_WIDTH-LCD_CHAR_MARGIN_RIGHT-LCD_CHAR_SPACING*3, 17, buffer);
+
+
+    menu.process_submenu(get_tcretract_menuoption, 5);
 
     uint8_t flags = 0;
-    for (uint8_t index=0; index<6; ++index) {
+    for (uint8_t index=0; index<5; ++index) {
         menu.drawSubMenu(drawTCRetractSubmenu, index, flags);
     }
     if (!(flags & MENU_STATUSLINE))
@@ -1187,6 +1164,17 @@ static void lcd_dual_details(uint8_t nr)
     }
 }
 
+static void start_menu_tcretract()
+{
+    lcd_cache[0] = tmp_extruder;
+    lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1));
+}
+
+static void lcd_menu_tcretraction()
+{
+    lcd_select_nozzle(lcd_menu_dual, start_menu_tcretract, lcd_change_to_previous_menu);
+}
+
 void lcd_menu_dual()
 {
     lcd_scroll_menu(PSTR("Dual extrusion"), 8, lcd_dual_item, lcd_dual_details);
@@ -1199,7 +1187,7 @@ void lcd_menu_dual()
         else if (IS_SELECTED_SCROLL(2))
             lcd_change_to_menu(lcd_dual_switch_extruder, MAIN_MENU_ITEM_POS(active_extruder ? 1 : 0));
         else if (IS_SELECTED_SCROLL(3))
-            lcd_change_to_menu(lcd_menu_tcretract, MAIN_MENU_ITEM_POS(1));
+            lcd_change_to_menu(lcd_menu_tcretraction, MAIN_MENU_ITEM_POS(tmp_extruder ? 1 : 0));
         else if (IS_SELECTED_SCROLL(4))
             lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(5))

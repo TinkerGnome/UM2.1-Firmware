@@ -263,7 +263,7 @@ void CommandBuffer::processWipe()
 
 
         // prime nozzle
-        float_to_string(length*0.4, LCD_CACHE_FILENAME(3), NULL);
+        float_to_string(toolchange_prime[active_extruder]+(length*0.2), LCD_CACHE_FILENAME(3), NULL);
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), 40);
         process_command(LCD_CACHE_FILENAME(2));
 
@@ -277,8 +277,10 @@ void CommandBuffer::processWipe()
         process_command(LCD_CACHE_FILENAME(2));
 
         // wipe moves
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y70 F%i"), 200*60);
+        process_command(LCD_CACHE_FILENAME(2));
         float_to_string(wipe_position[X_AXIS], LCD_CACHE_FILENAME(3), NULL);
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s Y60 F%i"), LCD_CACHE_FILENAME(3), 200*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s"), LCD_CACHE_FILENAME(3));
         process_command(LCD_CACHE_FILENAME(2));
         process_command_P(PSTR("G0 Y30"));
         float_to_string(wipe_position[Y_AXIS]-3.0f, LCD_CACHE_FILENAME(3), NULL);
@@ -306,7 +308,7 @@ void CommandBuffer::processWipe()
         retract_recover_length[active_extruder] = 0.5*length;
         SET_RETRACT_STATE(active_extruder);
     #endif // FWRETRACT
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y60 F%i"), 200*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y70 F%i"), 200*60);
         process_command(LCD_CACHE_FILENAME(2));
         axis_relative_state = old_relative_state;
     }
@@ -316,7 +318,7 @@ void CommandBuffer::move2heatup()
 {
 #if (EXTRUDERS > 1)
     uint16_t x = max(5, 5 + (int)extruder_offset[X_AXIS][active_extruder]);
-    uint16_t y = IS_DUAL_ENABLED ? 60 : 10;
+    uint16_t y = IS_DUAL_ENABLED ? 70 : 10;
 #else
     uint8_t x = 5;
     uint8_t y = 10;

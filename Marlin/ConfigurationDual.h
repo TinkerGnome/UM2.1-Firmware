@@ -12,7 +12,8 @@
 #define EEPROM_DUAL_STATE        0x62A  //  1 Byte
 #define EEPROM_DUAL_RETRACTLEN   0x62B  //  8 Byte toolchange_retract_length
 #define EEPROM_DUAL_RETRACTSPEED 0x633  //  8 Byte toolchange_retract_feedrate
-#define EEPROM_DUAL_RESERVED     0x63B  // next address
+#define EEPROM_DUAL_EXTRAPRIME   0x63B  //  8 Byte toolchange_prime
+#define EEPROM_DUAL_RESERVED     0x643  // next address
 
 // dual state flags
 #define DUAL_ENABLED         1
@@ -25,6 +26,7 @@ extern float dock_position[2];
 extern float wipe_position[2];
 extern float toolchange_retractlen[EXTRUDERS];
 extern float toolchange_retractfeedrate[EXTRUDERS];
+extern float toolchange_prime[EXTRUDERS];
 
 #ifdef EEPROM_CHITCHAT
 void Dual_PrintSettings();
@@ -44,6 +46,7 @@ FORCE_INLINE void Dual_StoreRetract()
 {
     eeprom_write_block(toolchange_retractlen, (uint8_t*)EEPROM_DUAL_RETRACTLEN, sizeof(toolchange_retractlen));
     eeprom_write_block(toolchange_retractfeedrate, (uint8_t*)EEPROM_DUAL_RETRACTSPEED, sizeof(toolchange_retractfeedrate));
+    eeprom_write_block(toolchange_prime, (uint8_t*)EEPROM_DUAL_EXTRAPRIME, sizeof(toolchange_prime));
 }
 #else
 FORCE_INLINE void Dual_RetrieveSettings() {}
