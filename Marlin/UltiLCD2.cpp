@@ -168,12 +168,16 @@ void lcd_menu_startup()
     }
     lcd_lib_update_screen();
 
+#ifndef DUAL_FAN
     if (led_mode == LED_MODE_ALWAYS_ON)
         analogWrite(LED_PIN, int(led_glow << 1) * led_brightness_level / 100);
+#endif
     if (led_glow_dir || lcd_lib_button_pressed)
     {
+#ifndef DUAL_FAN
         if (led_mode == LED_MODE_ALWAYS_ON)
             analogWrite(LED_PIN, 255 * led_brightness_level / 100);
+#endif
         led_glow = led_glow_dir = 0;
         LED_NORMAL();
         if (lcd_lib_button_pressed)
@@ -222,7 +226,6 @@ void doCooldown()
         setTargetHotend(0, n);
     setTargetBed(0);
     fanSpeed = 0;
-
     //quickStop();         //Abort all moves already in the planner
 }
 

@@ -224,14 +224,19 @@ extern unsigned char fanSpeedSoftPwm;
 #endif
 
 #ifdef FWRETRACT
-#define EXTRUDER_PREHEAT 8
-#define AUTO_RETRACT 128
+#define EXTRUDER_RETRACT     1
+#define TOOLCHANGE_RETRACT   4
+#define EXTRUDER_PREHEAT    16
+#define AUTO_RETRACT       128
 extern uint8_t retract_state;
 extern float retract_length, retract_feedrate, retract_zlift;
 #define AUTORETRACT_ENABLED (retract_state & AUTO_RETRACT)
-#define RETRACTED(e) (retract_state & (1 << e))
-#define SET_RETRACT_STATE(e) (retract_state |= (1 << e))
-#define CLEAR_RETRACT_STATE(e) (retract_state &= ~(1 << e))
+#define EXTRUDER_RETRACTED(e) (retract_state & (EXTRUDER_RETRACT << e))
+#define SET_EXTRUDER_RETRACT(e) (retract_state |= (EXTRUDER_RETRACT << e))
+#define CLEAR_EXTRUDER_RETRACT(e) (retract_state &= ~(EXTRUDER_RETRACT << e))
+#define TOOLCHANGE_RETRACTED(e) (retract_state & (TOOLCHANGE_RETRACT << e))
+#define SET_TOOLCHANGE_RETRACT(e) (retract_state |= (TOOLCHANGE_RETRACT << e))
+#define CLEAR_TOOLCHANGE_RETRACT(e) (retract_state &= ~(TOOLCHANGE_RETRACT << e))
 #if EXTRUDERS > 1
 extern float extruder_offset[2][EXTRUDERS];
 bool changeExtruder(uint8_t nextExtruder, bool moveZ);
@@ -243,7 +248,7 @@ FORCE_INLINE void reset_retractstate()
 {
     for (uint8_t e=0; e<EXTRUDERS; ++e)
     {
-        CLEAR_RETRACT_STATE(e);
+        CLEAR_EXTRUDER_RETRACT(e);
     }
 }
 #endif //FWRETRACT

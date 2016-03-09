@@ -1045,7 +1045,7 @@ void process_command(const char *strCmd)
       break;
       #ifdef FWRETRACT
       case 10: // G10 retract
-      if(!RETRACTED(active_extruder))
+      if(!EXTRUDER_RETRACTED(active_extruder))
       {
         destination[X_AXIS]=current_position[X_AXIS];
         destination[Y_AXIS]=current_position[Y_AXIS];
@@ -1061,14 +1061,14 @@ void process_command(const char *strCmd)
         float oldFeedrate = feedrate;
         feedrate=retract_feedrate;
         retract_recover_length[active_extruder] = current_position[E_AXIS]-destination[E_AXIS];//Set the recover length to whatever distance we retracted so we recover properly.
-        SET_RETRACT_STATE(active_extruder);
+        SET_EXTRUDER_RETRACT(active_extruder);
         prepare_move();
         feedrate = oldFeedrate;
       }
 
       break;
       case 11: // G11 retract_recover
-      if(RETRACTED(active_extruder))
+      if(EXTRUDER_RETRACTED(active_extruder))
       {
         destination[X_AXIS]=current_position[X_AXIS];
         destination[Y_AXIS]=current_position[Y_AXIS];
@@ -1076,7 +1076,7 @@ void process_command(const char *strCmd)
         destination[E_AXIS]=current_position[E_AXIS]+retract_recover_length[active_extruder];
         float oldFeedrate = feedrate;
         feedrate=retract_recover_feedrate[active_extruder];
-        CLEAR_RETRACT_STATE(active_extruder);
+        CLEAR_EXTRUDER_RETRACT(active_extruder);
         prepare_move();
         feedrate = oldFeedrate;
       }
@@ -2484,9 +2484,12 @@ void process_command(const char *strCmd)
            prepare_move();
         }
       }
-      SERIAL_ECHO_START;
-      SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
-      SERIAL_PROTOCOLLN((int)active_extruder);
+      else
+      {
+          SERIAL_ECHO_START;
+          SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
+          SERIAL_PROTOCOLLN((int)active_extruder);
+      }
 #else
       if(code_seen('F'))
       {
@@ -2552,7 +2555,11 @@ void get_coordinates()
     {
         if(code_seen(axis_codes[i]))
         {
-            destination[i] = (float)code_value() + ((axis_relative_state & (1 << i)) || (axis_relative_state & RELATIVE_MODE))*current_position[i];
+            destination[i] = (float)code_value();
+            if ((axis_relative_state & (1 << i)) || (axis_relative_state & RELATIVE_MODE))
+            {
+                destination[i] += current_position[i];
+            }
 #ifdef FWRETRACT
             seen |= (1 << i);
 #endif
@@ -2574,11 +2581,22 @@ void get_coordinates()
     {
         // e axis only
         float echange=destination[E_AXIS]-current_position[E_AXIS];
-        if (!RETRACTED(active_extruder) &&(echange<-MIN_RETRACT)) //retract
+        if (echange<-MIN_RETRACT)
         {
-            SET_RETRACT_STATE(active_extruder);
-            retract_recover_length[active_extruder] = -echange;
-            if (AUTORETRACT_ENABLED)
+            // accumulate retract length during tool change
+            if (printing_state >= PRINT_STATE_TOOLCHANGE)
+            {
+                if (TOOLCHANGE_RETRACTED(active_extruder))
+                {
+                    retract_recover_length[active_extruder] -= echange;
+                }
+                else
+                {
+                    retract_recover_length[active_extruder] = -echange;
+                    SET_TOOLCHANGE_RETRACT(active_extruder);
+                }
+            }
+            else if (AUTORETRACT_ENABLED && !EXTRUDER_RETRACTED(active_extruder))
             {
                 destination[Z_AXIS]+=retract_zlift; //not sure why chaninging current_position negatively does not work.
                 //if slicer retracted by echange=-1mm and you want to retract 3mm, corrrectede=-2mm additionally
@@ -2588,11 +2606,23 @@ void get_coordinates()
                 retract_recover_length[active_extruder] -= correctede;
                 feedrate=retract_feedrate;
             }
+            else
+            {
+                // keep last retraction in mind
+                retract_recover_length[active_extruder] = -echange;
+            }
+            SET_EXTRUDER_RETRACT(active_extruder);
         }
-        else if ((RETRACTED(active_extruder)) && (echange>MIN_RETRACT)) //retract_recover
+        else if (echange>MIN_RETRACT) //retract_recover
         {
-            CLEAR_RETRACT_STATE(active_extruder);
-            if (AUTORETRACT_ENABLED)
+            if (TOOLCHANGE_RETRACTED(active_extruder))
+            {
+                // retraction recover after tool change
+                destination[E_AXIS] = current_position[E_AXIS] + retract_recover_length[active_extruder];
+                //feedrate=retract_recover_feedrate[active_extruder];
+                CLEAR_TOOLCHANGE_RETRACT(active_extruder);
+            }
+            else if (AUTORETRACT_ENABLED && EXTRUDER_RETRACTED(active_extruder))
             {
                 current_position[Z_AXIS]-=retract_zlift;
                 //if slicer retracted_recovered by echange=+1mm and you want to retract_recover 3mm, corrrectede=2mm additionally
@@ -2600,12 +2630,7 @@ void get_coordinates()
                 current_position[E_AXIS]+=correctede; //to generate the additional steps, not the destination is changed, but inversely the current position
                 feedrate=retract_recover_feedrate[active_extruder];
             }
-            else // if (printing_state == PRINT_STATE_TOOLREADY)
-            {
-                // retraction recover after tool change
-                destination[E_AXIS] = current_position[E_AXIS] + retract_recover_length[active_extruder];
-                feedrate=retract_recover_feedrate[active_extruder];
-            }
+            CLEAR_EXTRUDER_RETRACT(active_extruder);
         }
     }
 #endif //FWRETRACT
@@ -3053,17 +3078,20 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
         plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 
-        // execute toolchange script
-        if (nextExtruder)
+        if IS_TOOLCHANGE_ENABLED
         {
-            cmdBuffer.processT1(moveZ);
+            // execute toolchange script
+            if (nextExtruder)
+            {
+                cmdBuffer.processT1(moveZ);
+            }
+            else
+            {
+                cmdBuffer.processT0(moveZ);
+            }
+            // finish tool change moves
+            st_synchronize();
         }
-        else
-        {
-            cmdBuffer.processT0(moveZ);
-        }
-        // finish tool change moves
-        st_synchronize();
 
         // set new extruder xy offsets
         for(uint8_t i = 0; i < 2; ++i)
@@ -3075,22 +3103,39 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         active_extruder = nextExtruder;
 
 #ifdef FWRETRACT
-        // clear reheat flag
-        retract_state &= ~(EXTRUDER_PREHEAT << active_extruder);
+        // clear reheat flags
+        for (uint8_t e=0; e<EXTRUDERS; ++e)
+        {
+            retract_state &= ~(EXTRUDER_PREHEAT << e);
+        }
 #endif // FWRETRACT
+
+        SERIAL_ECHO_START;
+        SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
+        SERIAL_PROTOCOLLN((int)active_extruder);
 
         plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 
         if (moveZ && IS_WIPE_ENABLED)
         {
+            if IS_TOOLCHANGE_ENABLED
+            {
+                // move to offset position
+                plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 120*60, active_extruder);
+            }
             // move to heatup pos
             CommandBuffer::move2heatup();
 
             // wait for nozzle heatup
             reheatNozzle(active_extruder);
 
-            // execute wipe script
-            cmdBuffer.processWipe();
+#ifdef PREVENT_DANGEROUS_EXTRUDE
+            if (target_temperature[active_extruder] >= get_extrude_min_temp())
+#endif
+            {
+                // execute wipe script
+                cmdBuffer.processWipe();
+            }
 
             // finish wipe moves
             st_synchronize();

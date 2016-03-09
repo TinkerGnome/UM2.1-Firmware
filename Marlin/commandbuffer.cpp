@@ -147,14 +147,16 @@ static char * toolchange_retract(char *buffer, uint8_t e)
 {
     float length = toolchange_retractlen[e] / volume_to_filament_length[e];
 #ifdef FWRETRACT
-    if (RETRACTED(e))
+    if (EXTRUDER_RETRACTED(e))
     {
         length = max(0.0, length-retract_recover_length[e]);
-        retract_recover_length[e] += length;
+        // retract_recover_length[e] += length;
+        CLEAR_EXTRUDER_RETRACT(e);
+        SET_TOOLCHANGE_RETRACT(e);
     }
-    else {
-        SET_RETRACT_STATE(e);
-        retract_recover_length[e] = length;
+    else
+    {
+        CLEAR_TOOLCHANGE_RETRACT(e);
     }
 #endif // FWRETRACT
     // dtostrf(-length, 4, 2, LCD_CACHE_FILENAME(3));
@@ -173,7 +175,7 @@ void CommandBuffer::processT0(bool bRetract)
     else
 #endif // SDSUPPORT
     {
-        // use absolute coordinates
+        // use relative e coordinates
         uint8_t old_relative_state = axis_relative_state;
         axis_relative_state = (1 << E_AXIS);
 
@@ -209,7 +211,7 @@ void CommandBuffer::processT1(bool bRetract)
     else
 #endif // SDSUPPORT
     {
-        // use absolute coordinates
+        // use relative e coordinates
         uint8_t old_relative_state = axis_relative_state;
         axis_relative_state = (1 << E_AXIS);
 
@@ -237,6 +239,38 @@ void CommandBuffer::processT1(bool bRetract)
 
 void CommandBuffer::processWipe()
 {
+    // use relative e coordinates
+    uint8_t old_relative_state = axis_relative_state;
+    axis_relative_state = (1 << E_AXIS);
+
+#ifdef FWRETRACT
+    float length = TOOLCHANGE_RETRACTED(active_extruder) ? retract_recover_length[active_extruder] : toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
+    CLEAR_TOOLCHANGE_RETRACT(active_extruder);
+    CLEAR_EXTRUDER_RETRACT(active_extruder);
+#else
+    float length = toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
+#endif // FWRETRACT
+
+    // undo the toolchange retraction
+    float_to_string(length*0.8, LCD_CACHE_FILENAME(3), NULL);
+    sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[active_extruder]);
+    process_command(LCD_CACHE_FILENAME(2));
+
+    // prime nozzle
+    float_to_string(toolchange_prime[active_extruder]+(length*0.2), LCD_CACHE_FILENAME(3), NULL);
+    sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), 40);
+    process_command(LCD_CACHE_FILENAME(2));
+
+    // retract before wipe
+    length = toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
+    float_to_string(length*-0.4, LCD_CACHE_FILENAME(3), NULL);
+    sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[active_extruder]);
+    process_command(LCD_CACHE_FILENAME(2));
+
+    // wait a second
+    sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G4 P%i"), 1000);
+    process_command(LCD_CACHE_FILENAME(2));
+
 #ifdef SDSUPPORT
     if (wipe)
     {
@@ -245,37 +279,6 @@ void CommandBuffer::processWipe()
     else
 #endif // SDSUPPORT
     {
-        // use absolute coordinates
-        uint8_t old_relative_state = axis_relative_state;
-        axis_relative_state = (1 << E_AXIS);
-
-    #ifdef FWRETRACT
-        float length = RETRACTED(active_extruder) ? retract_recover_length[active_extruder] : toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
-        CLEAR_RETRACT_STATE(active_extruder);
-    #else
-        float length = toolchange_retractlen[e]/volume_to_filament_length[active_extruder];
-    #endif // FWRETRACT
-
-        // undo the toolchange retraction
-        float_to_string(length*0.8, LCD_CACHE_FILENAME(3), NULL);
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[active_extruder]);
-        process_command(LCD_CACHE_FILENAME(2));
-
-
-        // prime nozzle
-        float_to_string(toolchange_prime[active_extruder]+(length*0.2), LCD_CACHE_FILENAME(3), NULL);
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), 40);
-        process_command(LCD_CACHE_FILENAME(2));
-
-        // retract before wipe
-        float_to_string(length*-0.4, LCD_CACHE_FILENAME(3), NULL);
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[active_extruder]);
-        process_command(LCD_CACHE_FILENAME(2));
-
-        // wait a second
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G4 P%i"), 1000);
-        process_command(LCD_CACHE_FILENAME(2));
-
         // wipe moves
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y70 F%i"), 200*60);
         process_command(LCD_CACHE_FILENAME(2));
@@ -284,7 +287,7 @@ void CommandBuffer::processWipe()
         process_command(LCD_CACHE_FILENAME(2));
         process_command_P(PSTR("G0 Y30"));
         float_to_string(wipe_position[Y_AXIS]-3.0f, LCD_CACHE_FILENAME(3), NULL);
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y%s F%i"), LCD_CACHE_FILENAME(3), 100*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y%s F%i"), LCD_CACHE_FILENAME(3), 80*60);
         process_command(LCD_CACHE_FILENAME(2));
         float_to_string(wipe_position[X_AXIS]+5.5f, LCD_CACHE_FILENAME(3), NULL);
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s"), LCD_CACHE_FILENAME(3));
@@ -297,21 +300,21 @@ void CommandBuffer::processWipe()
         float_to_string(wipe_position[Y_AXIS]+4.0f, LCD_CACHE_FILENAME(1), NULL);
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s Y%s"), LCD_CACHE_FILENAME(3), LCD_CACHE_FILENAME(1));
         process_command(LCD_CACHE_FILENAME(2));
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y35 F%i"), 100*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y35 F%i"), 50*60);
         process_command(LCD_CACHE_FILENAME(2));
 
-        // small retract after wipe
-        float_to_string(length*-0.1, LCD_CACHE_FILENAME(3), NULL);
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[active_extruder]);
-        process_command(LCD_CACHE_FILENAME(2));
-    #ifdef FWRETRACT
-        retract_recover_length[active_extruder] = 0.5*length;
-        SET_RETRACT_STATE(active_extruder);
-    #endif // FWRETRACT
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y70 F%i"), 200*60);
-        process_command(LCD_CACHE_FILENAME(2));
-        axis_relative_state = old_relative_state;
     }
+    // small retract after wipe
+    float_to_string(length*-0.1, LCD_CACHE_FILENAME(3), NULL);
+    sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[active_extruder]);
+    process_command(LCD_CACHE_FILENAME(2));
+#ifdef FWRETRACT
+    retract_recover_length[active_extruder] = 0.5*length;
+    SET_TOOLCHANGE_RETRACT(active_extruder);
+#endif // FWRETRACT
+    sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y70 F%i"), 100*60);
+    process_command(LCD_CACHE_FILENAME(2));
+    axis_relative_state = old_relative_state;
 }
 
 void CommandBuffer::move2heatup()

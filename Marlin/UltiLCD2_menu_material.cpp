@@ -9,6 +9,9 @@
 #include "UltiLCD2_hi_lib.h"
 #include "UltiLCD2_menu_material.h"
 #include "UltiLCD2_menu_utils.h"
+#if EXTRUDERS > 1
+#include "ConfigurationDual.h"
+#endif
 
 #ifndef eeprom_read_float
 //Arduino IDE compatibility, lacks the eeprom_read_float function
@@ -65,9 +68,16 @@ void lcd_menu_material()
 
 static void lcd_menu_material_main_return()
 {
-    doCooldown();
-    enquecommand_P(PSTR("G28 X0 Y0"));
+    for(uint8_t n=0; n<EXTRUDERS; n++)
+    setTargetHotend(0, n);
+    fanSpeed = 0;
+
+    if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
+    {
+        enquecommand_P(PSTR("G28 X0 Y0"));
+    }
     currentMenu = lcd_menu_material_main;
+    lcd_lib_encoder_pos = ENCODER_NO_SELECTION;
 }
 
 static void lcd_menu_material_main()
@@ -80,9 +90,14 @@ static void lcd_menu_material_main()
         {
             minProgress = 0;
             char buffer[32];
-            enquecommand_P(PSTR("G28 X0 Y0"));
-            sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[0]), X_MAX_LENGTH/2, 85);
-            enquecommand(buffer);
+#if EXTRUDERS > 1
+            if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
+#endif
+            {
+                enquecommand_P(PSTR("G28 X0 Y0"));
+                sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[0]), 10, 85);
+                enquecommand(buffer);
+            }
             lcd_change_to_menu_change_material(lcd_menu_material_main_return);
         }
         else if (IS_SELECTED_MAIN(1))
@@ -97,7 +112,7 @@ static void lcd_menu_material_main()
 void lcd_change_to_menu_change_material(menuFunc_t return_menu)
 {
     post_change_material_menu = return_menu;
-    preheat_end_time = millis() + (unsigned long)material[active_extruder].change_preheat_wait_time * 1000L;
+    preheat_end_time = millis() + (unsigned long)material[tmp_extruder].change_preheat_wait_time * 1000L;
     lcd_change_to_menu(lcd_menu_change_material_preheat);
 }
 
@@ -107,7 +122,7 @@ static void lcd_menu_change_material_preheat()
 #ifdef USE_CHANGE_TEMPERATURE
     setTargetHotend(material[tmp_extruder].change_temperature, tmp_extruder);
 #else
-    setTargetHotend(material[tmp_extruder].temperature[0], active_extruder);
+    setTargetHotend(material[tmp_extruder].temperature[0], tmp_extruder);
 #endif
     int16_t temp = degHotend(tmp_extruder) - 20;
     int16_t target = degTargetHotend(tmp_extruder) - 20;
@@ -310,7 +325,11 @@ static void lcd_menu_change_material_insert_forward()
 static void materialInsertReady()
 {
     plan_set_e_position(0);
+#if EXTRUDERS > 1
+    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], -toolchange_retractlen[tmp_extruder] / volume_to_filament_length[tmp_extruder], 25*60, tmp_extruder);
+#else
     plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], -END_OF_PRINT_RETRACTION / volume_to_filament_length[tmp_extruder], 25*60, tmp_extruder);
+#endif
     cancelMaterialInsert();
 }
 
@@ -681,7 +700,7 @@ static void lcd_menu_material_selected()
 #if EXTRUDERS > 1
     if (tmp_extruder == 0)
         lcd_lib_draw_string_centerP(40, PSTR("for primary nozzle"));
-    else if (tmp_extruder == 1)
+    else //if (tmp_extruder == 1)
         lcd_lib_draw_string_centerP(40, PSTR("for secondary nozzle"));
 #endif
     lcd_lib_update_screen();

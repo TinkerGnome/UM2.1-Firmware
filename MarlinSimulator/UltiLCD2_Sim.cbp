@@ -36,6 +36,7 @@
 			<Add option="-DF_CPU=16000000" />
 			<Add option="-DEXTRUDERS=2" />
 			<Add option="-DTEMP_SENSOR_1=20" />
+			<Add option="-DUSE_CHANGE_TEMPERATURE" />
 			<Add directory="arduino_sim" />
 			<Add directory="avr_sim" />
 			<Add directory="D:/SDL-1.2.15/include" />

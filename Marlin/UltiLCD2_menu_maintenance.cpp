@@ -122,16 +122,23 @@ static void lcd_advanced_details(uint8_t nr)
 
 static void lcd_menu_maintenance_advanced_return()
 {
-    doCooldown();
-    enquecommand_P(PSTR("G28 X0 Y0"));
+    for(uint8_t n=0; n<EXTRUDERS; n++)
+    setTargetHotend(0, n);
+    fanSpeed = 0;
+
+    if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
+    {
+        enquecommand_P(PSTR("G28 X0 Y0"));
+    }
     currentMenu = lcd_menu_maintenance_advanced;
+    lcd_lib_encoder_pos = SCROLL_MENU_ITEM_POS(5 + BED_MENU_OFFSET + EXTRUDERS);
 }
 
 static void move_head_to_front()
 {
     char buffer[32] = {0};
     enquecommand_P(PSTR("G28 X0 Y0"));
-    sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[0]), int(AXIS_CENTER_POS(X_AXIS)), int(min_pos[Y_AXIS])+10);
+    sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[0]), int(AXIS_CENTER_POS(X_AXIS)), int(min_pos[Y_AXIS])+70);
     enquecommand(buffer);
 }
 
@@ -142,7 +149,10 @@ static void start_nozzle_heatup()
 
 static void start_insert_material()
 {
-    move_head_to_front();
+    if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
+    {
+        move_head_to_front();
+    }
     lcd_change_to_menu_insert_material(lcd_menu_maintenance_advanced_return);
 }
 
