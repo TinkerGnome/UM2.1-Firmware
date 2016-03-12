@@ -9,6 +9,11 @@
 extern uint8_t lcd_cache[LCD_CACHE_SIZE];
 #define LCD_CACHE_FILENAME(n) ((char*)&lcd_cache[2*LCD_CACHE_COUNT + (n) * LONG_FILENAME_LENGTH])
 
+extern uint8_t primed;
+#define EXTRUDER_PRIMED      1
+#define ENDOFPRINT_RETRACT 128
+
+
 void lcd_menu_print_select();
 void lcd_clear_cache();
 void doCancelPrint();

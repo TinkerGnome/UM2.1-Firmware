@@ -13,6 +13,7 @@
 #include "ConfigurationDual.h"
 #include "temperature.h"
 #include "machinesettings.h"
+#include "commandbuffer.h"
 #include "pins.h"
 #if (EXTRUDERS > 1)
 #include "UltiLCD2_menu_dual.h"
@@ -128,7 +129,7 @@ static void lcd_menu_maintenance_advanced_return()
 
     if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
     {
-        enquecommand_P(PSTR("G28 X0 Y0"));
+        CommandBuffer::homeHead();
     }
     currentMenu = lcd_menu_maintenance_advanced;
     lcd_lib_encoder_pos = SCROLL_MENU_ITEM_POS(5 + BED_MENU_OFFSET + EXTRUDERS);
@@ -136,10 +137,9 @@ static void lcd_menu_maintenance_advanced_return()
 
 static void move_head_to_front()
 {
-    char buffer[32] = {0};
-    enquecommand_P(PSTR("G28 X0 Y0"));
-    sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[0]), int(AXIS_CENTER_POS(X_AXIS)), int(min_pos[Y_AXIS])+70);
-    enquecommand(buffer);
+    CommandBuffer::homeHead();
+    cmd_synchronize();
+    CommandBuffer::move2front();
 }
 
 static void start_nozzle_heatup()
@@ -149,7 +149,9 @@ static void start_nozzle_heatup()
 
 static void start_insert_material()
 {
+#if EXTRUDERS > 1
     if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
+#endif
     {
         move_head_to_front();
     }
@@ -158,9 +160,9 @@ static void start_insert_material()
 
 void start_move_material()
 {
+    lcd_lib_encoder_pos = 0;
     set_extrude_min_temp(0);
     enquecommand_P(PSTR("G92 E0"));
-
     target_temperature[tmp_extruder] = material[tmp_extruder].temperature[0];
 }
 
@@ -215,17 +217,17 @@ void lcd_menu_maintenance_advanced()
         else if (IS_SELECTED_SCROLL(2 + BED_MENU_OFFSET + EXTRUDERS))
         {
             lcd_lib_beep();
-            enquecommand_P(PSTR("G28 X0 Y0"));
+            CommandBuffer::homeHead();
         }
         else if (IS_SELECTED_SCROLL(3 + BED_MENU_OFFSET + EXTRUDERS))
         {
             lcd_lib_beep();
-            enquecommand_P(PSTR("G28 Z0"));
+            CommandBuffer::homeBed();
         }
         else if (IS_SELECTED_SCROLL(4 + BED_MENU_OFFSET + EXTRUDERS))
         {
             lcd_lib_beep();
-            enquecommand_P(PSTR("G28 Z0"));
+            CommandBuffer::homeBed();
             enquecommand_P(PSTR("G1 Z40"));
         }
         else if (IS_SELECTED_SCROLL(5 + BED_MENU_OFFSET + EXTRUDERS))

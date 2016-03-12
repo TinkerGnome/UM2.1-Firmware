@@ -9,6 +9,7 @@
 #include "UltiLCD2_hi_lib.h"
 #include "UltiLCD2_menu_material.h"
 #include "UltiLCD2_menu_utils.h"
+#include "commandbuffer.h"
 #if EXTRUDERS > 1
 #include "ConfigurationDual.h"
 #endif
@@ -68,14 +69,19 @@ void lcd_menu_material()
 
 static void lcd_menu_material_main_return()
 {
-    for(uint8_t n=0; n<EXTRUDERS; n++)
-    setTargetHotend(0, n);
+    for(uint8_t n=0; n<EXTRUDERS; ++n)
+	{
+		setTargetHotend(0, n);
+	}
     fanSpeed = 0;
-
+#if EXTRUDERS > 1
     if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
+#endif
     {
-        enquecommand_P(PSTR("G28 X0 Y0"));
+        CommandBuffer::homeHead();
     }
+    enquecommand_P(PSTR("M84 X Y E"));
+
     currentMenu = lcd_menu_material_main;
     lcd_lib_encoder_pos = ENCODER_NO_SELECTION;
 }
@@ -89,14 +95,13 @@ static void lcd_menu_material_main()
         if (IS_SELECTED_MAIN(0) && !is_command_queued())
         {
             minProgress = 0;
-            char buffer[32];
 #if EXTRUDERS > 1
             if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
 #endif
             {
-                enquecommand_P(PSTR("G28 X0 Y0"));
-                sprintf_P(buffer, PSTR("G1 F%i X%i Y%i"), int(homing_feedrate[0]), 10, 85);
-                enquecommand(buffer);
+                CommandBuffer::homeHead();
+                cmd_synchronize();
+                CommandBuffer::move2front();
             }
             lcd_change_to_menu_change_material(lcd_menu_material_main_return);
         }
@@ -111,6 +116,7 @@ static void lcd_menu_material_main()
 
 void lcd_change_to_menu_change_material(menuFunc_t return_menu)
 {
+    lcd_lib_encoder_pos = 0;
     post_change_material_menu = return_menu;
     preheat_end_time = millis() + (unsigned long)material[tmp_extruder].change_preheat_wait_time * 1000L;
     lcd_change_to_menu(lcd_menu_change_material_preheat);
@@ -224,6 +230,7 @@ static void lcd_menu_change_material_remove_wait_user()
 void lcd_change_to_menu_insert_material(menuFunc_t return_menu)
 {
     post_change_material_menu = return_menu;
+    lcd_lib_encoder_pos = 0;
     currentMenu = lcd_menu_insert_material_preheat;
 }
 

@@ -3,10 +3,9 @@
 #include "ConfigurationDual.h"
 #include "planner.h"
 #include "stepper.h"
+#include "machinesettings.h"
 #include "UltiLCD2_low_lib.h"
 #include "UltiLCD2_menu_print.h" // use lcd_cache as char buffer
-
-#if (EXTRUDERS > 1)
 
 #define CONFIG_DIR  "config"
 #define FILENAME_T0 "T0"
@@ -15,6 +14,7 @@
 
 CommandBuffer cmdBuffer;
 
+#if (EXTRUDERS > 1)
 CommandBuffer::~CommandBuffer()
 {
     deleteScript(t0);
@@ -22,7 +22,6 @@ CommandBuffer::~CommandBuffer()
     deleteScript(wipe);
 }
 
-#ifdef SDSUPPORT
 uint8_t CommandBuffer::initScripts()
 {
     // clear all
@@ -141,13 +140,11 @@ uint8_t CommandBuffer::processScript(struct t_cmdline *script)
     return cmdCount;
 }
 
-#endif // SDSUPPORT
-
 static char * toolchange_retract(char *buffer, uint8_t e)
 {
     float length = toolchange_retractlen[e] / volume_to_filament_length[e];
 #ifdef FWRETRACT
-    if (EXTRUDER_RETRACTED(e))
+    if (EXTRUDER_RETRACTED(e) || TOOLCHANGE_RETRACTED(e))
     {
         length = max(0.0, length-retract_recover_length[e]);
         // retract_recover_length[e] += length;
@@ -257,7 +254,7 @@ void CommandBuffer::processWipe()
     process_command(LCD_CACHE_FILENAME(2));
 
     // prime nozzle
-    float_to_string(toolchange_prime[active_extruder]+(length*0.2), LCD_CACHE_FILENAME(3), NULL);
+    float_to_string(toolchange_prime[active_extruder]/volume_to_filament_length[active_extruder]+(length*0.2), LCD_CACHE_FILENAME(3), NULL);
     sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), 40);
     process_command(LCD_CACHE_FILENAME(2));
 
@@ -316,6 +313,7 @@ void CommandBuffer::processWipe()
     process_command(LCD_CACHE_FILENAME(2));
     axis_relative_state = old_relative_state;
 }
+#endif // EXTRUDERS
 
 void CommandBuffer::move2heatup()
 {
@@ -330,4 +328,29 @@ void CommandBuffer::move2heatup()
     process_command(LCD_CACHE_FILENAME(3));
 }
 
+void CommandBuffer::move2front()
+{
+    uint8_t x = (X_MAX_POS/2);
+#if (EXTRUDERS > 1)
+    uint8_t y = IS_DUAL_ENABLED ? 70 : 10;
+#else
+    uint8_t y = 10;
 #endif
+    sprintf_P(LCD_CACHE_FILENAME(3), PSTR(HEATUP_POSITION_COMMAND), x, y);
+    process_command(LCD_CACHE_FILENAME(3));
+}
+
+void CommandBuffer::homeHead()
+{
+    enquecommand_P(PSTR("G28 X0 Y0"));
+}
+
+void CommandBuffer::homeBed()
+{
+    enquecommand_P(PSTR("G28 Z0"));
+}
+
+void CommandBuffer::homeAll()
+{
+    enquecommand_P(PSTR("G28"));
+}

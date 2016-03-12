@@ -7,13 +7,17 @@ class CommandBuffer
 {
   public:
 
+    static void homeHead();
+    static void homeBed();
+    static void homeAll();
     static void move2heatup();
+    static void move2front();
 
+#if EXTRUDERS > 1
     void processT0(bool bRetract);
     void processT1(bool bRetract);
     void processWipe();
 
-#ifdef SDSUPPORT
     // constructor
     CommandBuffer () : t0(0), t1(0), wipe(0)  {}
     // destructor
@@ -44,8 +48,9 @@ class CommandBuffer
     ~CommandBuffer() {}
 
     uint8_t initScripts() {}
-#endif // SDSUPPORT
+#endif // EXTRUDERS
 };
 
 extern CommandBuffer cmdBuffer;
-#endif
+
+#endif //COMMANDBUFFER_H

@@ -1,5 +1,5 @@
 #include "Configuration.h"
-#if (EXTRUDERS > 1) && defined(ENABLE_ULTILCD2) && defined(SDSUPPORT)
+#if (EXTRUDERS > 1) && defined(ENABLE_ULTILCD2)
 #include "ConfigurationStore.h"
 #include "ConfigurationDual.h"
 #include "planner.h"
@@ -11,6 +11,8 @@
 #include "UltiLCD2_menu_utils.h"
 #include "UltiLCD2_menu_maintenance.h"
 #include "UltiLCD2_menu_dual.h"
+
+uint8_t menu_extruder = 0;
 
 void lcd_menu_dual();
 
@@ -492,17 +494,17 @@ static void lcd_menu_wipeposition()
 
 static void lcd_tune_tcretractlen()
 {
-    lcd_tune_value(toolchange_retractlen[lcd_cache[0]], 0.0f, 50.0, 0.1f);
+    lcd_tune_value(toolchange_retractlen[menu_extruder], 0.0f, 50.0, 0.1f);
 }
 
 static void lcd_tune_tcretractfeed()
 {
-    lcd_tune_value(toolchange_retractfeedrate[lcd_cache[0]], 0.0f, max_feedrate[E_AXIS]*60, 60.0f);
+    lcd_tune_value(toolchange_retractfeedrate[menu_extruder], 0.0f, max_feedrate[E_AXIS]*60, 60.0f);
 }
 
 static void lcd_tune_tcprime()
 {
-    lcd_tune_value(toolchange_prime[lcd_cache[0]], -20.0f, 20.0f, 0.1f);
+    lcd_tune_value(toolchange_prime[menu_extruder], -20.0f, 20.0f, 0.1f);
 }
 
 // create menu options for "axis steps/mm"
@@ -587,7 +589,7 @@ static void drawTCRetractSubmenu(uint8_t nr, uint8_t &flags)
             flags |= MENU_STATUSLINE;
         }
         lcd_lib_draw_string_leftP(17, PSTR("Len"));
-        float_to_string(toolchange_retractlen[lcd_cache[0]], buffer, NULL);
+        float_to_string(toolchange_retractlen[menu_extruder], buffer, NULL);
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*8
                                 , 17
                                 , LCD_CHAR_SPACING*5
@@ -605,7 +607,7 @@ static void drawTCRetractSubmenu(uint8_t nr, uint8_t &flags)
             flags |= MENU_STATUSLINE;
         }
         lcd_lib_draw_string_leftP(27, PSTR("Speed"));
-        float_to_string(toolchange_retractfeedrate[lcd_cache[0]]/60, buffer, NULL);
+        float_to_string(toolchange_retractfeedrate[menu_extruder]/60, buffer, NULL);
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*8
                                 , 27
                                 , LCD_CHAR_SPACING*5
@@ -623,7 +625,7 @@ static void drawTCRetractSubmenu(uint8_t nr, uint8_t &flags)
             flags |= MENU_STATUSLINE;
         }
         lcd_lib_draw_string_leftP(37, PSTR("Prime"));
-        float_to_string(toolchange_prime[lcd_cache[0]], buffer, NULL);
+        float_to_string(toolchange_prime[menu_extruder], buffer, NULL);
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*7
                                 , 37
                                 , LCD_CHAR_SPACING*6
@@ -641,7 +643,7 @@ void lcd_menu_tune_tcretract()
 
     char buffer[4] = {0};
     strcpy_P(buffer, PSTR("("));
-    int_to_string(lcd_cache[0]+1, buffer+1, PSTR(")"));
+    int_to_string(menu_extruder+1, buffer+1, PSTR(")"));
     lcd_lib_draw_string(LCD_GFX_WIDTH-LCD_CHAR_MARGIN_RIGHT-LCD_CHAR_SPACING*3, 17, buffer);
 
 
@@ -823,7 +825,7 @@ static void lcd_menu_dualstate()
 
 //////////////////
 
-void switch_extruder(uint8_t newExtruder)
+void switch_extruder(uint8_t newExtruder, bool moveZ)
 {
     if (newExtruder != active_extruder)
     {
@@ -831,11 +833,11 @@ void switch_extruder(uint8_t newExtruder)
         if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
         {
             // home head
-            enquecommand_P(PSTR("G28 X0 Y0"));
+            CommandBuffer::homeHead();
             cmd_synchronize();
             st_synchronize();
         }
-        changeExtruder(newExtruder, false);
+        changeExtruder(newExtruder, moveZ);
         SERIAL_ECHO_START;
         SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
         SERIAL_PROTOCOLLN((int)active_extruder);
@@ -844,7 +846,7 @@ void switch_extruder(uint8_t newExtruder)
 
 static void lcd_switch_extruder()
 {
-    switch_extruder(tmp_extruder);
+    switch_extruder(tmp_extruder, false);
     lcd_change_to_previous_menu();
 }
 
@@ -1166,7 +1168,7 @@ static void lcd_dual_details(uint8_t nr)
 
 static void start_menu_tcretract()
 {
-    lcd_cache[0] = tmp_extruder;
+    menu_extruder = tmp_extruder;
     lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1));
 }
 
