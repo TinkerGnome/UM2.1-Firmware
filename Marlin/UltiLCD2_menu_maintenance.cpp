@@ -127,7 +127,9 @@ static void lcd_menu_maintenance_advanced_return()
     setTargetHotend(0, n);
     fanSpeed = 0;
 
-    if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
+#if (EXTRUDERS > 1)
+    if ((menu_extruder == 0) || (menu_extruder == active_extruder))
+#endif
     {
         CommandBuffer::homeHead();
     }
@@ -150,7 +152,7 @@ static void start_nozzle_heatup()
 static void start_insert_material()
 {
 #if EXTRUDERS > 1
-    if ((tmp_extruder == 0) || (tmp_extruder == active_extruder))
+    if ((menu_extruder == 0) || (menu_extruder == active_extruder))
 #endif
     {
         move_head_to_front();
@@ -163,7 +165,11 @@ void start_move_material()
     lcd_lib_encoder_pos = 0;
     set_extrude_min_temp(0);
     enquecommand_P(PSTR("G92 E0"));
-    target_temperature[tmp_extruder] = material[tmp_extruder].temperature[0];
+#if (EXTRUDERS > 1)
+    target_temperature[menu_extruder] = material[menu_extruder].temperature[0];
+#else
+    target_temperature[active_extruder] = material[active_extruder].temperature[0];
+#endif
 }
 
 #if EXTRUDERS > 1
@@ -203,11 +209,12 @@ void lcd_menu_maintenance_advanced()
             lcd_change_to_menu(lcd_menu_maintenance_led, 0);
         else if (IS_SELECTED_SCROLL(1 + EXTRUDERS))
         {
-                        // heatup nozzle
+        // heatup nozzle
         #if EXTRUDERS > 1
-            lcd_change_to_menu(lcd_dual_nozzle_heatup, MAIN_MENU_ITEM_POS(tmp_extruder ? 1 : 0));
+            lcd_change_to_menu(lcd_dual_nozzle_heatup, MAIN_MENU_ITEM_POS(menu_extruder));
         #else
             start_nozzle_heatup();
+            lcd_change_to_menu(lcd_menu_maintenance_advanced_heatup);
         #endif
         }
 #if TEMP_SENSOR_BED != 0
@@ -234,7 +241,7 @@ void lcd_menu_maintenance_advanced()
         {
             // insert material
         #if EXTRUDERS > 1
-            lcd_change_to_menu(lcd_dual_insert_material, MAIN_MENU_ITEM_POS(tmp_extruder ? 1 : 0));
+            lcd_change_to_menu(lcd_dual_insert_material, MAIN_MENU_ITEM_POS(menu_extruder ? 1 : 0));
         #else
             start_insert_material();
         #endif
@@ -243,9 +250,10 @@ void lcd_menu_maintenance_advanced()
         {
             // move material
         #if EXTRUDERS > 1
-            lcd_change_to_menu(lcd_dual_move_material, MAIN_MENU_ITEM_POS(tmp_extruder ? 1 : 0));
+            lcd_change_to_menu(lcd_dual_move_material, MAIN_MENU_ITEM_POS(menu_extruder ? 1 : 0));
         #else
             start_move_material();
+            lcd_change_to_menu(lcd_menu_maintenance_extrude);
         #endif
         }
         else if (IS_SELECTED_SCROLL(7 + BED_MENU_OFFSET + EXTRUDERS))
@@ -267,11 +275,19 @@ static void lcd_menu_maintenance_advanced_heatup()
 {
     if (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM != 0)
     {
-        target_temperature[tmp_extruder] = int(target_temperature[tmp_extruder]) + (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM);
-        if (target_temperature[tmp_extruder] < 0)
-            target_temperature[tmp_extruder] = 0;
-        if (target_temperature[tmp_extruder] > HEATER_0_MAXTEMP - 15)
-            target_temperature[tmp_extruder] = HEATER_0_MAXTEMP - 15;
+#if (EXTRUDERS > 1)
+        target_temperature[menu_extruder] = int(target_temperature[menu_extruder]) + (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM);
+        if (target_temperature[menu_extruder] < 0)
+            target_temperature[menu_extruder] = 0;
+        if (target_temperature[menu_extruder] > HEATER_0_MAXTEMP - 15)
+            target_temperature[menu_extruder] = HEATER_0_MAXTEMP - 15;
+#else
+        target_temperature[active_extruder] = int(target_temperature[active_extruder]) + (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM);
+        if (target_temperature[active_extruder] < 0)
+            target_temperature[active_extruder] = 0;
+        if (target_temperature[active_extruder] > HEATER_0_MAXTEMP - 15)
+            target_temperature[active_extruder] = HEATER_0_MAXTEMP - 15;
+#endif
         lcd_lib_encoder_pos = 0;
     }
     if (lcd_lib_button_pressed)
@@ -281,8 +297,13 @@ static void lcd_menu_maintenance_advanced_heatup()
     lcd_lib_draw_string_centerP(20, PSTR("Nozzle temperature:"));
     lcd_lib_draw_string_centerP(53, PSTR("Click to return"));
     char buffer[16];
-    int_to_string(int(dsp_temperature[tmp_extruder]), buffer, PSTR("C/"));
-    int_to_string(int(target_temperature[tmp_extruder]), buffer+strlen(buffer), PSTR("C"));
+#if (EXTRUDERS > 1)
+    int_to_string(int(dsp_temperature[menu_extruder]), buffer, PSTR("C/"));
+    int_to_string(int(target_temperature[menu_extruder]), buffer+strlen(buffer), PSTR("C"));
+#else
+    int_to_string(int(dsp_temperature[active_extruder]), buffer, PSTR("C/"));
+    int_to_string(int(target_temperature[active_extruder]), buffer+strlen(buffer), PSTR("C"));
+#endif
     lcd_lib_draw_string_center(30, buffer);
     lcd_lib_update_screen();
 }
@@ -294,14 +315,22 @@ void lcd_menu_maintenance_extrude()
         if (printing_state == PRINT_STATE_NORMAL && movesplanned() < 3)
         {
             current_position[E_AXIS] += lcd_lib_encoder_pos * 0.1;
-            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 10, tmp_extruder);
+#if (EXTRUDERS > 1)
+            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 10, menu_extruder);
+#else
+            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 10, active_extruder);
+#endif
             lcd_lib_encoder_pos = 0;
         }
     }
     if (lcd_lib_button_pressed)
     {
         set_extrude_min_temp(EXTRUDE_MINTEMP);
-        target_temperature[tmp_extruder] = 0;
+#if (EXTRUDERS > 1)
+        target_temperature[menu_extruder] = 0;
+#else
+        target_temperature[active_extruder] = 0;
+#endif
         lcd_change_to_menu(previousMenu, previousEncoderPos);
     }
 
@@ -310,8 +339,13 @@ void lcd_menu_maintenance_extrude()
     lcd_lib_draw_string_centerP(40, PSTR("Rotate to extrude"));
     lcd_lib_draw_string_centerP(53, PSTR("Click to return"));
     char buffer[16];
-    int_to_string(int(dsp_temperature[tmp_extruder]), buffer, PSTR("C/"));
-    int_to_string(int(target_temperature[tmp_extruder]), buffer+strlen(buffer), PSTR("C"));
+#if (EXTRUDERS > 1)
+    int_to_string(int(dsp_temperature[menu_extruder]), buffer, PSTR("C/"));
+    int_to_string(int(target_temperature[menu_extruder]), buffer+strlen(buffer), PSTR("C"));
+#else
+    int_to_string(int(dsp_temperature[active_extruder]), buffer, PSTR("C/"));
+    int_to_string(int(target_temperature[active_extruder]), buffer+strlen(buffer), PSTR("C"));
+#endif
     lcd_lib_draw_string_center(30, buffer);
     lcd_lib_update_screen();
 }

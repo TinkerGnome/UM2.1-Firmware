@@ -8,7 +8,6 @@
 #include "machinesettings.h"
 #include "commandbuffer.h"
 #include "UltiLCD2_hi_lib.h"
-#include "UltiLCD2_menu_utils.h"
 #include "UltiLCD2_menu_maintenance.h"
 #include "UltiLCD2_menu_dual.h"
 
@@ -846,7 +845,7 @@ void switch_extruder(uint8_t newExtruder, bool moveZ)
 
 static void lcd_switch_extruder()
 {
-    switch_extruder(tmp_extruder, false);
+    switch_extruder(menu_extruder, false);
     lcd_change_to_previous_menu();
 }
 
@@ -1168,7 +1167,6 @@ static void lcd_dual_details(uint8_t nr)
 
 static void start_menu_tcretract()
 {
-    menu_extruder = tmp_extruder;
     lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1));
 }
 
@@ -1189,7 +1187,7 @@ void lcd_menu_dual()
         else if (IS_SELECTED_SCROLL(2))
             lcd_change_to_menu(lcd_dual_switch_extruder, MAIN_MENU_ITEM_POS(active_extruder ? 1 : 0));
         else if (IS_SELECTED_SCROLL(3))
-            lcd_change_to_menu(lcd_menu_tcretraction, MAIN_MENU_ITEM_POS(tmp_extruder ? 1 : 0));
+            lcd_change_to_menu(lcd_menu_tcretraction, MAIN_MENU_ITEM_POS(menu_extruder));
         else if (IS_SELECTED_SCROLL(4))
             lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(5))
@@ -1204,5 +1202,32 @@ void lcd_menu_dual()
     }
 }
 
+void lcd_select_nozzle(menuFunc_t nextMenu, menuFunc_t callbackOnSelect, menuFunc_t callbackOnAbort)
+{
+    lcd_tripple_menu(PSTR("EXTRUDER|1"), PSTR("EXTRUDER|2"), PSTR("RETURN"));
 
-#endif//ENABLE_ULTILCD2
+    if (lcd_lib_button_pressed)
+    {
+        uint8_t index(SELECTED_MAIN_MENU_ITEM());
+        if (nextMenu)
+        {
+            lcd_replace_menu(nextMenu, previousEncoderPos);
+        }
+        if (index < 2)
+        {
+            menu_extruder = index;
+            if (callbackOnSelect) callbackOnSelect();
+        }
+        else
+        {
+            if (callbackOnAbort) callbackOnAbort();
+        }
+    }
+    else
+    {
+        lcd_lib_update_screen();
+    }
+}
+
+
+#endif //EXTRUDERS

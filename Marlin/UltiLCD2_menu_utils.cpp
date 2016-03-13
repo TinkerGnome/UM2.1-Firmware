@@ -4,7 +4,9 @@
 #include "UltiLCD2_menu_utils.h"
 #include "UltiLCD2_hi_lib.h"
 #include "UltiLCD2.h"
-
+#if (EXTRUDERS > 1)
+#include "UltiLCD2_menu_dual.h"
+#endif
 #define LCD_TIMEOUT_TO_STATUS (1000*30UL)		// 30 Sec.
 
 // colors for the encoder led ring
@@ -295,34 +297,5 @@ bool lcd_tune_value(float &value, float _min, float _max, float _step)
     }
     return false;
 }
-
-#if EXTRUDERS > 1
-void lcd_select_nozzle(menuFunc_t nextMenu, menuFunc_t callbackOnSelect, menuFunc_t callbackOnAbort)
-{
-    lcd_tripple_menu(PSTR("EXTRUDER|1"), PSTR("EXTRUDER|2"), PSTR("RETURN"));
-
-    if (lcd_lib_button_pressed)
-    {
-        uint8_t index(SELECTED_MAIN_MENU_ITEM());
-        if (nextMenu)
-        {
-            lcd_replace_menu(nextMenu, previousEncoderPos);
-        }
-        if (index < 2)
-        {
-            tmp_extruder = index;
-            if (callbackOnSelect) callbackOnSelect();
-        }
-        else
-        {
-            if (callbackOnAbort) callbackOnAbort();
-        }
-    }
-    else
-    {
-        lcd_lib_update_screen();
-    }
-}
-#endif
 
 #endif

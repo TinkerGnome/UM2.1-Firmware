@@ -22,7 +22,7 @@ CommandBuffer::~CommandBuffer()
     deleteScript(wipe);
 }
 
-uint8_t CommandBuffer::initScripts()
+void CommandBuffer::initScripts()
 {
     // clear all
     deleteScript(t0);
@@ -32,14 +32,12 @@ uint8_t CommandBuffer::initScripts()
     t1=0;
     wipe=0;
 
-    uint8_t cmdCount(0);
-
     if(!card.isOk())
     {
         card.initsd();
         if (!card.isOk())
         {
-            return cmdCount;
+            return;
         }
     }
 
@@ -51,15 +49,15 @@ uint8_t CommandBuffer::initScripts()
         card.chdir(filename);
         // read scripts from sd card
         strcpy_P(filename, PSTR(FILENAME_T0));
-        if ((t0 = readScript(filename))) ++cmdCount;
+        if ((t0 = readScript(filename)));
         strcpy_P(filename, PSTR(FILENAME_T1));
-        if ((t1 = readScript(filename))) ++cmdCount;
+        if ((t1 = readScript(filename)));
         strcpy_P(filename, PSTR(FILENAME_WIPE));
-        if ((wipe = readScript(filename))) ++cmdCount;
+        if ((wipe = readScript(filename)));
     }
     card.setroot();
 
-    return cmdCount;
+    return;
 }
 
 struct CommandBuffer::t_cmdline* CommandBuffer::readScript(const char *filename)

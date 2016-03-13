@@ -65,12 +65,12 @@ extern struct materialSettings material[EXTRUDERS];
 #define EEPROM_MATERIAL_CHANGE_WAIT_TIME(n)       ((uint8_t*)(EEPROM_MATERIAL_CHANGE_WAIT_TIME_OFFSET + uint16_t(n)))
 
 void lcd_menu_material();
-void lcd_change_to_menu_change_material(menuFunc_t return_menu);
+void lcd_change_to_menu_change_material(menuFunc_t return_menu, uint8_t e);
 void lcd_change_to_menu_insert_material(menuFunc_t return_menu);
 bool lcd_material_verify_material_settings();
 void lcd_material_reset_defaults();
 void lcd_material_set_material(uint8_t nr, uint8_t e);
-void lcd_material_store_material(uint8_t nr);
+void lcd_material_store_material(uint8_t nr, uint8_t e);
 void lcd_material_read_current_material();
 void lcd_material_store_current_material();
 

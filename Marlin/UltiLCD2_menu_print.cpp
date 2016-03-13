@@ -488,7 +488,11 @@ void lcd_menu_print_select()
             if (!card.filenameIsDir)
             {
                 //Start print
+#if (EXTRUDERS > 1)
                 switch_extruder(0, false);
+#else
+                active_extruder = 0;
+#endif
                 card.openFile(card.filename, true);
                 if (card.isFileOpen() && !is_command_queued())
                 {
@@ -677,7 +681,7 @@ static void lcd_menu_print_printing()
                 }
                 lcd_lib_beep();
             }else if (IS_SELECTED_MAIN(1) && movesplanned() < 1)
-                lcd_change_to_menu_change_material(lcd_change_to_menu_change_material_return);
+                lcd_change_to_menu_change_material(lcd_change_to_menu_change_material_return, active_extruder);
             else if (IS_SELECTED_MAIN(2))
                 lcd_change_to_menu(lcd_menu_print_tune);
         }
@@ -1074,13 +1078,11 @@ static void lcd_menu_print_tune()
 #if EXTRUDERS > 1
         else if (IS_SELECTED_SCROLL(5 + BED_MENU_OFFSET + EXTRUDERS * 2))
         {
-            // tmp_extruder = 0;
             menu_extruder = 0;
             lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1));
         }
         else if (IS_SELECTED_SCROLL(6 + BED_MENU_OFFSET + EXTRUDERS * 2))
         {
-            // tmp_extruder = 1;
             menu_extruder = 1;
             lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1));
         }

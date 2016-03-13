@@ -272,7 +272,6 @@ extern uint8_t printing_state;
 
 // Handling multiple extruders
 extern uint8_t active_extruder;
-extern uint8_t tmp_extruder;
 
 #if EXTRUDERS > 2
   # error Unsupported number of extruders

@@ -186,9 +186,7 @@ float extruder_offset[2][EXTRUDERS] = {
 };
 #endif
 uint8_t active_extruder = 0;
-#if (EXTRUDERS > 1)
-uint8_t tmp_extruder = 0;
-#endif
+static uint8_t tmp_extruder = 0;
 
 uint8_t fanSpeed=0;
 uint8_t fanSpeedPercent=100;
@@ -816,10 +814,12 @@ static void axis_is_at_home(int axis) {
   min_pos[axis] =          base_min_pos(axis);// + add_homeing[axis];
   max_pos[axis] =          base_max_pos(axis);// + add_homeing[axis];
 
+#if EXTRUDERS > 1
   if (axis <= Y_AXIS)
   {
       current_position[axis] += extruder_offset[axis][active_extruder];
   }
+#endif
   // keep position state in mind
   position_state |= (1 << axis);
 }

@@ -138,8 +138,4 @@ extern LCDMenu menu;
 
 bool lcd_tune_value(float &value, float _min, float _max, float _step);
 
-#if EXTRUDERS > 1
-void lcd_select_nozzle(menuFunc_t nextMenu, menuFunc_t callbackOnSelect = 0, menuFunc_t callbackOnAbort = 0);
-#endif // EXTRUDERS
-
 #endif

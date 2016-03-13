@@ -23,7 +23,7 @@ class CommandBuffer
     // destructor
     ~CommandBuffer ();
 
-    uint8_t initScripts();
+    void initScripts();
   private:
     // the structure of a single node
     struct t_cmdline{
@@ -47,7 +47,7 @@ class CommandBuffer
     // destructor
     ~CommandBuffer() {}
 
-    uint8_t initScripts() {}
+    void initScripts() {}
 #endif // EXTRUDERS
 };
 
