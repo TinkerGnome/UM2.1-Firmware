@@ -240,12 +240,19 @@ static void doStartPrint()
     }
 
 #if (EXTRUDERS > 1)
-    // reset active extruder
-    switch_extruder(0, true);
-    process_command_P(PSTR("G11"));
-    current_position[E_AXIS] = 0.0;
-    plan_set_e_position(0);
-    enquecommand_P(PSTR("G1 E0"));
+	if (primed)
+	{
+        // reset active extruder
+        switch_extruder(0, true);
+
+		if (primed & (EXTRUDER_PRIMED << 0))
+        {
+            process_command_P(PSTR("G11"));
+            current_position[E_AXIS] = 0.0;
+            plan_set_e_position(0);
+            enquecommand_P(PSTR("G1 E0"));
+        }
+	}
 #endif
 
     postMenuCheck = checkPrintFinished;

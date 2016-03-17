@@ -18,8 +18,8 @@
 #define DOCK_X_POSITION    220.0
 #define DOCK_Y_POSITION     41.0
 
-#define WIPE_X_POSITION     90.5
-#define WIPE_Y_POSITION     24.0
+#define WIPE_X_POSITION    115.0
+#define WIPE_Y_POSITION     23.0
 
 uint8_t dual_state = DUAL_ENABLED | DUAL_TOOLCHANGE | DUAL_WIPE;
 float add_homeing_z2;
