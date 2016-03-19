@@ -64,9 +64,15 @@ static void abortPrint()
 
     //enquecommand_P(PSTR("M401"));
     quickStop();
-    for (uint8_t i=0; i<NUM_AXIS; ++i)
+    for (uint8_t axis=0; axis<NUM_AXIS; ++axis)
     {
-        current_position[i] = st_get_position(i)/axis_steps_per_unit[i];
+        current_position[axis] = st_get_position(axis)/axis_steps_per_unit[axis];
+#if EXTRUDERS > 1
+        if (axis <= Y_AXIS)
+        {
+            current_position[axis] += extruder_offset[axis][active_extruder];
+        }
+#endif
     }
     current_position[E_AXIS] /= volume_to_filament_length[active_extruder];
 
@@ -94,10 +100,9 @@ static void abortPrint()
         primed = 0;
     }
 
-
-#if EXTRUDERS > 1
-    switch_extruder(0, false);
-#endif // EXTRUDERS
+//#if EXTRUDERS > 1
+//    switch_extruder(0, false);
+//#endif // EXTRUDERS
 
     if (current_position[Z_AXIS] > Z_MAX_POS - 30)
     {
@@ -114,16 +119,17 @@ static void abortPrint()
     	// we're not printing any more
         card.sdprinting = false;
     }
-    //If we where paused, make sure we abort that pause. Else strange things happen: https://github.com/Ultimaker/Ultimaker2Marlin/issues/32
-    card.pause = false;
-    pauseRequested = false;
-
-    enquecommand_P(PSTR("M84"));
-    lifetime_stats_print_end();
 
     // finish all queued commands
     cmd_synchronize();
     st_synchronize();
+
+    enquecommand_P(PSTR("M84"));
+    lifetime_stats_print_end();
+
+    //If we where paused, make sure we abort that pause. Else strange things happen: https://github.com/Ultimaker/Ultimaker2Marlin/issues/32
+    card.pause = false;
+    pauseRequested = false;
 
     // reset defaults
     retract_state = 0;
@@ -173,7 +179,7 @@ static void doStartPrint()
 	// since we are going to prime the nozzle, forget about any G10/G11 retractions that happened at end of previous print
 	reset_retractstate();
 
-    for(uint8_t e = 0; e<EXTRUDERS; ++e)
+    for(int8_t e = EXTRUDERS-1; e>=0; --e)
     {
 #ifdef FWRETRACT
         // clear reheat flag
@@ -240,19 +246,14 @@ static void doStartPrint()
     }
 
 #if (EXTRUDERS > 1)
-	if (primed)
-	{
-        // reset active extruder
-        switch_extruder(0, true);
-
-		if (primed & (EXTRUDER_PRIMED << 0))
-        {
-            process_command_P(PSTR("G11"));
-            current_position[E_AXIS] = 0.0;
-            plan_set_e_position(0);
-            enquecommand_P(PSTR("G1 E0"));
-        }
-	}
+    // recover wipe retract
+    if (primed & (EXTRUDER_PRIMED << active_extruder))
+    {
+        process_command_P(PSTR("G11"));
+        current_position[E_AXIS] = 0.0;
+        plan_set_e_position(0);
+        enquecommand_P(PSTR("G1 E0"));
+    }
 #endif
 
     postMenuCheck = checkPrintFinished;
@@ -552,10 +553,6 @@ void lcd_menu_print_select()
                             extrudemultiply[e] = material[e].flow;
                         }
 
-                        // move to heatup pos
-                        process_command_P(PSTR("G28"));
-                        CommandBuffer::move2heatup();
-
                         if (strcasecmp(material[0].name, LCD_DETAIL_CACHE_MATERIAL_TYPE(0)) != 0)
                         {
                             if (strlen(material[0].name) > 0 && strlen(LCD_DETAIL_CACHE_MATERIAL_TYPE(0)) > 0)
@@ -563,6 +560,12 @@ void lcd_menu_print_select()
                                 currentMenu = lcd_menu_print_material_warning;
                             }
                         }
+
+                        // move to heatup pos
+                        process_command_P(PSTR("G28"));
+#if EXTRUDERS < 2
+                        CommandBuffer::move2heatup();
+#endif
                     }else{
                         //Classic gcode file
 
@@ -597,21 +600,32 @@ static void lcd_menu_print_heatup()
     if (current_temperature_bed > target_temperature_bed - TEMP_WINDOW)
     {
 #endif
-        for(uint8_t e=0; e<EXTRUDERS; e++)
+        for(int8_t e=EXTRUDERS-1; e>=0; --e)
         {
-            if (LCD_DETAIL_CACHE_MATERIAL(e) < 1 || target_temperature[e] > 0)
+            if (LCD_DETAIL_CACHE_MATERIAL(e) < 1)
                 continue;
-            target_temperature[e] = material[e].temperature[nozzleSizeToTemperatureIndex(LCD_DETAIL_CACHE_NOZZLE_DIAMETER(e))];
+            if (target_temperature[e] <= 0)
+                target_temperature[e] = material[e].temperature[nozzleSizeToTemperatureIndex(LCD_DETAIL_CACHE_NOZZLE_DIAMETER(e))];
+            // limit power consumption: pre-heat only one nozzle at the same time
+            if (target_temperature[e] > 0)
+                break;
         }
 
         if (current_temperature_bed >= target_temperature_bed - TEMP_WINDOW * 2 && !is_command_queued())
         {
             bool ready = false;
-            for(uint8_t e=0; e<EXTRUDERS; e++)
+            for(int8_t e=EXTRUDERS-1; e>=0; --e)
             {
                 if ((target_temperature[e] > 0) && (current_temperature[e] >= target_temperature[e] - TEMP_WINDOW))
                 {
                     ready = true;
+                    // set target temperature for other used nozzles
+                    for(int8_t e2=EXTRUDERS-1; e2>=0; --e2)
+                    {
+                        if ((LCD_DETAIL_CACHE_MATERIAL(e2) < 1) || (target_temperature[e2] > 0))
+                            continue;
+                        target_temperature[e2] = material[e2].temperature[nozzleSizeToTemperatureIndex(LCD_DETAIL_CACHE_NOZZLE_DIAMETER(e2))];
+                    }
                     break;
                 }
             }
@@ -635,7 +649,7 @@ static void lcd_menu_print_heatup()
 #endif
 
     uint8_t progress = 125;
-    for(uint8_t e=0; e<EXTRUDERS; e++)
+    for(int8_t e=EXTRUDERS-1; e>=0; --e)
     {
         if (LCD_DETAIL_CACHE_MATERIAL(e) < 1 || target_temperature[e] < 1)
             continue;

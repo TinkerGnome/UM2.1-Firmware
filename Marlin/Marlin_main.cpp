@@ -3066,7 +3066,7 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         float zoffset = active_extruder ? add_homeing[Z_AXIS]-add_homeing_z2 : add_homeing_z2-add_homeing[Z_AXIS];
 
         #define MIN_TOOLCHANGE_ZHOP  2.0f
-        #define MAX_TOOLCHANGE_ZHOP 10.0f
+        #define MAX_TOOLCHANGE_ZHOP 14.0f
         float maxDiffZ = Z_HOME_POS + add_homeing[Z_AXIS] - current_position[Z_AXIS];
         maxDiffZ = constrain(maxDiffZ, 0.0f, MAX_TOOLCHANGE_ZHOP);
 

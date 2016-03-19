@@ -1135,9 +1135,7 @@ ISR(TIMER0_COMPB_vect)
 #if EXTRUDERS > 2
   static unsigned long raw_temp_2_value = 0;
 #endif
-#if defined(TEMP_BED_PIN) && TEMP_BED_PIN > -1
   static unsigned long raw_temp_bed_value = 0;
-#endif
   static unsigned char temp_state = 5;
   static unsigned char pwm_count = (1 << SOFT_PWM_SCALE);
   static unsigned char soft_pwm_0;
@@ -1151,121 +1149,70 @@ ISR(TIMER0_COMPB_vect)
   static unsigned char soft_pwm_b;
   #endif
 
-  if(pwm_count == 0){
-    #if defined(HEATER_BED_PIN) && HEATER_BED_PIN > -1
-    soft_pwm_b = soft_pwm_bed;
-    #endif
+  if (pwm_count == 0)
+  {
     soft_pwm_0 = soft_pwm[0];
+    if (soft_pwm_0 > 0)
+    {
+      WRITE(HEATER_0_PIN,1);
+    }
     #if EXTRUDERS > 1
     soft_pwm_1 = soft_pwm[1];
+    if (soft_pwm_1 > 0)
+    {
+      WRITE(HEATER_1_PIN,1);
+    }
     #endif
     #if EXTRUDERS > 2
     soft_pwm_2 = soft_pwm[2];
+    if (soft_pwm_2 > 0)
+    {
+      WRITE(HEATER_2_PIN,1);
+    }
+    #endif
+    #if defined(HEATER_BED_PIN) && HEATER_BED_PIN > -1
+    soft_pwm_b = soft_pwm_bed;
+      #if EXTRUDERS < 2
+        if(soft_pwm_b > 0) WRITE(HEATER_BED_PIN,1);
+      #endif
     #endif
     #ifdef FAN_SOFT_PWM
     soft_pwm_fan = fanSpeedSoftPwm / 2;
     if(soft_pwm_fan > 0) WRITE(FAN_PIN,1);
     #endif
   }
-
-  // allow max 2 active heaters at the same time
-  uint8_t heat_count = 0;
-  uint8_t heat_flags = 0;
-
-  // active extruder has priority
-
-  if (active_extruder == 0)
-  {
-    if (soft_pwm_0 > pwm_count)
+  if(soft_pwm_0 <= pwm_count) WRITE(HEATER_0_PIN,0);
+  #if EXTRUDERS > 1
+  if(soft_pwm_1 <= pwm_count) WRITE(HEATER_1_PIN,0);
+  #endif
+  #if EXTRUDERS > 2
+  if(soft_pwm_2 <= pwm_count) WRITE(HEATER_2_PIN,0);
+  #endif
+  #if defined(HEATER_BED_PIN) && HEATER_BED_PIN > -1
+    if(soft_pwm_b <= pwm_count)
     {
-      heat_flags |= HEATER_0_ENABLED;
-      ++heat_count;
+        WRITE(HEATER_BED_PIN,0);
     }
-  }
-#if EXTRUDERS > 1
-  else if (active_extruder == 1)
-  {
-    if (soft_pwm_1 > pwm_count)
-    {
-      heat_flags |= HEATER_1_ENABLED;
-      ++heat_count;
-    }
-  }
-#endif
-#if EXTRUDERS > 2
-  else if (active_extruder == 2)
-  {
-    if(soft_pwm_2 > pwm_count)
-    {
-      heat_flags |= HEATER_2_ENABLED;
-      ++heat_count;
-    }
-  }
-#endif
-
-#if defined(HEATER_BED_PIN) && HEATER_BED_PIN > -1
-  // allow heated bed if possible
-  if ((heat_count < MAX_HEATERS) && (soft_pwm_b > pwm_count))
-  {
-    heat_flags |= HEATER_BED_ENABLED;
-    ++heat_count;
-  }
-#endif
-
-  // allow heating of inactive extruders if possible
-  if (active_extruder != 0)
-  {
-    if ((heat_count < MAX_HEATERS) && (soft_pwm_0 > pwm_count))
-    {
-      heat_flags |= HEATER_0_ENABLED;
-      ++heat_count;
-    }
+    #if EXTRUDERS > 1
     else
     {
-      max_heating_start_millis[0] = 0;
+      uint8_t heat_count = 0;
+      if (READ(HEATER_0_PIN))  ++heat_count;
+      if (READ(HEATER_1_PIN))  ++heat_count;
+      #if EXTRUDERS > 2
+      if (READ(HEATER_2_PIN))  ++heat_count;
+      #endif
+      if (heat_count < MAX_HEATERS)
+      {
+          WRITE(HEATER_BED_PIN, 1);
+      }
+      else
+      {
+          WRITE(HEATER_BED_PIN, 0);
+      }
     }
-  }
-#if EXTRUDERS > 1
-  if (active_extruder != 1)
-  {
-    if ((heat_count < MAX_HEATERS) && (soft_pwm_1 > pwm_count))
-    {
-      heat_flags |= HEATER_1_ENABLED;
-      ++heat_count;
-    }
-    else
-    {
-      max_heating_start_millis[1] = 0;
-    }
-  }
-#endif
-#if EXTRUDERS > 2
-  if (active_extruder != 2)
-  {
-    if ((heat_count < MAX_HEATERS) && (soft_pwm_2 > pwm_count))
-    {
-      heat_flags |= HEATER_2_ENABLED;
-      ++heat_count;
-    }
-    else
-    {
-      max_heating_start_millis[2] = 0;
-    }
-  }
-#endif
-
-  // set heater states
-  WRITE(HEATER_0_PIN, heat_flags & HEATER_0_ENABLED);
-#if (EXTRUDERS > 1)
-  WRITE(HEATER_1_PIN, heat_flags & HEATER_1_ENABLED);
-#endif
-#if (EXTRUDERS > 2)
-  WRITE(HEATER_2_PIN, heat_flags & HEATER_2_ENABLED);
-#endif
-#if defined(HEATER_BED_PIN) && HEATER_BED_PIN > -1
-  WRITE(HEATER_BED_PIN, heat_flags & HEATER_BED_ENABLED);
-#endif
-
+    #endif // EXTRUDERS
+  #endif
   #ifdef FAN_SOFT_PWM
   if(soft_pwm_fan <= pwm_count) WRITE(FAN_PIN,0);
   #endif

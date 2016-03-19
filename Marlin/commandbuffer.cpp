@@ -327,7 +327,7 @@ void CommandBuffer::move2heatup()
     {
         x = wipe_position[X_AXIS]+extruder_offset[X_AXIS][active_extruder];
         y = 65.0f;
-        plan_buffer_line(x, y, current_position[Z_AXIS], current_position[E_AXIS], 200, active_extruder);
+        moveHead(x, y, 200);
         y = wipe_position[Y_AXIS];
     }
     else
