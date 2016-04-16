@@ -60,23 +60,17 @@ void lcd_clear_cache()
 static void abortPrint()
 {
     postMenuCheck = NULL;
-    doCooldown();
 
-    //enquecommand_P(PSTR("M401"));
     quickStop();
+    doCooldown();
+    clear_command_queue();
+
     for (uint8_t axis=0; axis<NUM_AXIS; ++axis)
     {
         current_position[axis] = st_get_position(axis)/axis_steps_per_unit[axis];
-#if EXTRUDERS > 1
-        if (axis <= Y_AXIS)
-        {
-            current_position[axis] += extruder_offset[axis][active_extruder];
-        }
-#endif
     }
     current_position[E_AXIS] /= volume_to_filament_length[active_extruder];
 
-    clear_command_queue();
 
     // set up the end of print retraction
     if ((primed & ENDOFPRINT_RETRACT) && (primed & (EXTRUDER_PRIMED << active_extruder)))
@@ -104,14 +98,17 @@ static void abortPrint()
 //    switch_extruder(0, false);
 //#endif // EXTRUDERS
 
+    // move to a safe y position in dual mode
+    CommandBuffer::move2SafeYPos();
+
     if (current_position[Z_AXIS] > Z_MAX_POS - 30)
     {
-        enquecommand_P(PSTR("G28 X0 Y0"));
-        enquecommand_P(PSTR("G28 Z0"));
+        CommandBuffer::homeHead();
+        CommandBuffer::homeBed();
     }
     else
     {
-        enquecommand_P(PSTR("G28"));
+        CommandBuffer::homeAll();
     }
 
     if (card.sdprinting)

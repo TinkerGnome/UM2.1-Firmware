@@ -12,6 +12,8 @@ class CommandBuffer
     static void homeAll();
     static void move2heatup();
     static void move2front();
+    // move to a safe y position in dual mode
+    static void move2SafeYPos();
 
 #if EXTRUDERS > 1
     void processT0(bool bRetract);

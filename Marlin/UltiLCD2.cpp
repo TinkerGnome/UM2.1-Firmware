@@ -166,6 +166,7 @@ void lcd_menu_startup()
         //lcd_lib_clear_gfx(0, 22, ultimakerTextOutlineGfx);
         lcd_lib_draw_gfx(0, 22, ultimakerTextGfx);
     }
+    lcd_lib_draw_string_centerP(53, PSTR(STRING_CONFIG_H_AUTHOR));
     lcd_lib_update_screen();
 
 #ifndef DUAL_FAN

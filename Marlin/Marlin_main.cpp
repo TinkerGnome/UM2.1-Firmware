@@ -3107,7 +3107,14 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
            current_position[i] += extruder_offset[i][nextExtruder];
         }
 
-        // Set the new active extruder and restore position
+        // keep the position of the E_AXIS in mind
+        float current_epos = current_position[E_AXIS];
+        if(EXTRUDER_RETRACTED(active_extruder) || TOOLCHANGE_RETRACTED(active_extruder))
+        {
+            current_epos += retract_recover_length[active_extruder];
+        }
+
+        // Set the new active extruder
         active_extruder = nextExtruder;
 
 #ifdef FWRETRACT
@@ -3155,6 +3162,13 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
             {
                current_position[Z_AXIS] += zoffset;
             }
+        }
+
+        // reset the position of E_AXIS
+        current_position[E_AXIS] = current_epos;
+        if(EXTRUDER_RETRACTED(active_extruder) || TOOLCHANGE_RETRACTED(active_extruder))
+        {
+            current_position[E_AXIS] -= retract_recover_length[active_extruder];
         }
 
         feedrate = old_feedrate;

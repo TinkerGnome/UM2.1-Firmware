@@ -174,7 +174,7 @@ void CommandBuffer::processT0(bool bRetract)
         uint8_t old_relative_state = axis_relative_state;
         axis_relative_state = (1 << E_AXIS);
 
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 Y51 F%i"), 200*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 Y%i F%i"), DUAL_Y_MIN_POS, 200*60);
         process_command(LCD_CACHE_FILENAME(2));
         if (bRetract)
         {
@@ -189,7 +189,7 @@ void CommandBuffer::processT0(bool bRetract)
         process_command(LCD_CACHE_FILENAME(2));
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y55 F%i"), 100*60);
         process_command(LCD_CACHE_FILENAME(2));
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X171 F%i"), 200*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 Y%i F%i"), DUAL_Y_MIN_POS, 200*60);
         process_command(LCD_CACHE_FILENAME(2));
         idle();
         axis_relative_state = old_relative_state;
@@ -210,14 +210,14 @@ void CommandBuffer::processT1(bool bRetract)
         uint8_t old_relative_state = axis_relative_state;
         axis_relative_state = (1 << E_AXIS);
 
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 Y55 F%i"), 200*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 Y%i F%i"), DUAL_Y_MIN_POS, 200*60);
         process_command(LCD_CACHE_FILENAME(2));
         if (bRetract)
         {
             process_command(toolchange_retract(LCD_CACHE_FILENAME(2), 0));
         }
         float_to_string(dock_position[X_AXIS], LCD_CACHE_FILENAME(3), NULL);
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s F%i"), LCD_CACHE_FILENAME(3), 100*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s Y55 F%i"), LCD_CACHE_FILENAME(3), 100*60);
         process_command(LCD_CACHE_FILENAME(2));
         float_to_string(dock_position[Y_AXIS], LCD_CACHE_FILENAME(3), NULL);
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y%s F%i"), LCD_CACHE_FILENAME(3), 100*60);
@@ -225,7 +225,7 @@ void CommandBuffer::processT1(bool bRetract)
         idle();
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X170 F%i"), 50*60);
         process_command(LCD_CACHE_FILENAME(2));
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y55 F%i"), 200*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y%i F%i"), DUAL_Y_MIN_POS, 200*60);
         process_command(LCD_CACHE_FILENAME(2));
         idle();
         axis_relative_state = old_relative_state;
@@ -290,7 +290,7 @@ void CommandBuffer::processWipe()
         float_to_string(wipe_position[X_AXIS]+extruder_offset[X_AXIS][active_extruder], LCD_CACHE_FILENAME(3), NULL);
         sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 X%s"), LCD_CACHE_FILENAME(3));
         process_command(LCD_CACHE_FILENAME(2));
-        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y65 F%i"), 200*60);
+        sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y%i F%i"), DUAL_Y_MIN_POS, 200*60);
         process_command(LCD_CACHE_FILENAME(2));
     }
     // small retract after wipe
@@ -301,8 +301,8 @@ void CommandBuffer::processWipe()
     retract_recover_length[active_extruder] = 0.5*length;
     SET_TOOLCHANGE_RETRACT(active_extruder);
 #endif // FWRETRACT
-    sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y70 F%i"), 100*60);
-    process_command(LCD_CACHE_FILENAME(2));
+//    sprintf_P(LCD_CACHE_FILENAME(2), PSTR("G0 Y70 F%i"), 100*60);
+//    process_command(LCD_CACHE_FILENAME(2));
     axis_relative_state = old_relative_state;
 }
 #endif // EXTRUDERS
@@ -326,7 +326,7 @@ void CommandBuffer::move2heatup()
     if IS_DUAL_ENABLED
     {
         x = wipe_position[X_AXIS]+extruder_offset[X_AXIS][active_extruder];
-        y = 65.0f;
+        y = DUAL_Y_MIN_POS;
         moveHead(x, y, 200);
         y = wipe_position[Y_AXIS];
     }
@@ -346,11 +346,21 @@ void CommandBuffer::move2front()
 {
     float x = (X_MAX_POS/2);
 #if (EXTRUDERS > 1)
-    float y = IS_DUAL_ENABLED ? 70 : 10;
+    float y = IS_DUAL_ENABLED ? DUAL_Y_MIN_POS+5 : 10;
 #else
     float y = 10;
 #endif
     moveHead(x, y, 200);
+}
+
+// move to a safe y position in dual mode
+void CommandBuffer::move2SafeYPos()
+{
+    if (IS_DUAL_ENABLED && current_position[Y_AXIS] < DUAL_Y_MIN_POS)
+    {
+        cmd_synchronize();
+        moveHead(current_position[X_AXIS], DUAL_Y_MIN_POS, 120);
+    }
 }
 
 void CommandBuffer::homeHead()
