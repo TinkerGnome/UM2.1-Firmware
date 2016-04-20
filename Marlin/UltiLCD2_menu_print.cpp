@@ -57,7 +57,7 @@ void lcd_clear_cache()
     LCD_CACHE_NR_OF_FILES() = 0xFF;
 }
 
-static void abortPrint()
+void abortPrint()
 {
     postMenuCheck = NULL;
 
@@ -127,6 +127,7 @@ static void abortPrint()
     //If we where paused, make sure we abort that pause. Else strange things happen: https://github.com/Ultimaker/Ultimaker2Marlin/issues/32
     card.pause = false;
     pauseRequested = false;
+    printing_state = PRINT_STATE_NORMAL;
 
     // reset defaults
     retract_state = 0;
@@ -833,10 +834,30 @@ static void lcd_menu_print_material_warning()
     lcd_lib_update_screen();
 }
 
+static void lcd_menu_doabort()
+{
+    LED_GLOW();
+    if (printing_state == PRINT_STATE_ABORT)
+    {
+        lcd_lib_clear();
+        lcd_lib_draw_string_centerP(20, PSTR("Aborting..."));
+        lcd_lib_update_screen();
+    }
+    else
+    {
+        lcd_change_to_menu(lcd_menu_print_ready);
+    }
+}
+
+static void set_abort_state()
+{
+    printing_state = PRINT_STATE_ABORT;
+}
+
 static void lcd_menu_print_abort()
 {
     LED_GLOW();
-    lcd_question_screen(lcd_menu_print_ready, abortPrint, PSTR("YES"), previousMenu, NULL, PSTR("NO"));
+    lcd_question_screen(lcd_menu_doabort, set_abort_state, PSTR("YES"), previousMenu, NULL, PSTR("NO"));
 
     lcd_lib_draw_string_centerP(20, PSTR("Abort the print?"));
 
@@ -886,6 +907,7 @@ static void lcd_menu_print_ready()
     }else{
         currentMenu = lcd_menu_print_ready_cooled_down;
     }
+
     lcd_lib_update_screen();
 }
 

@@ -358,7 +358,6 @@ void CommandBuffer::move2SafeYPos()
 {
     if (IS_DUAL_ENABLED && current_position[Y_AXIS] < DUAL_Y_MIN_POS)
     {
-        cmd_synchronize();
         moveHead(current_position[X_AXIS], DUAL_Y_MIN_POS, 120);
     }
 }

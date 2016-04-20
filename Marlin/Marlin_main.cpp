@@ -44,6 +44,7 @@
 #include "language.h"
 #include "pins_arduino.h"
 #include "machinesettings.h"
+#include "UltiLCD2_menu_print.h"
 #if (EXTRUDERS > 1)
 #include "commandbuffer.h"
 #endif
@@ -514,6 +515,10 @@ static void checkToolchange(const char *cmd)
 
 void loop()
 {
+  if (printing_state == PRINT_STATE_ABORT)
+  {
+    abortPrint();
+  }
   if(buflen < (BUFSIZE-1))
   {
     get_command();
@@ -2486,7 +2491,7 @@ void process_command(const char *strCmd)
       if (changeExtruder(tmp_extruder, position_state & KNOWNPOS_Z))
       {
         // Move to the old position if 'F' was in the parameters
-        if(make_move && Stopped == false)
+        if((printing_state < PRINT_STATE_ABORT) && make_move && Stopped == false && (IS_SD_PRINTING || is_command_queued()))
         {
            prepare_move();
         }
@@ -3020,7 +3025,7 @@ void reheatNozzle(uint8_t e)
 {
     unsigned long last_output = millis();
 
-    while ( current_temperature[e] < target_temperature[e] - TEMP_WINDOW )
+    while ((printing_state < PRINT_STATE_ABORT) && ( current_temperature[e] < target_temperature[e] - TEMP_WINDOW ))
     {
     #if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_MAX6675)
       if( (millis() - last_output) > 1000UL )
@@ -3143,36 +3148,45 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
             // wait for nozzle heatup
             reheatNozzle(active_extruder);
-
-#ifdef PREVENT_DANGEROUS_EXTRUDE
-            if (target_temperature[active_extruder] >= get_extrude_min_temp())
-#endif
+            if (printing_state == PRINT_STATE_ABORT)
             {
-                // execute wipe script
-                cmdBuffer.processWipe();
+                CommandBuffer::move2SafeYPos();
             }
-
-            // finish wipe moves
-            st_synchronize();
-
-            // reset wipe offset
-            current_position[Z_AXIS] += wipeOffset;
-            // raise buildplate if necessary
-            if (zoffset > 0.0f)
+            else
             {
-               current_position[Z_AXIS] += zoffset;
-            }
-        }
+    #ifdef PREVENT_DANGEROUS_EXTRUDE
+                if (target_temperature[active_extruder] >= get_extrude_min_temp())
+    #endif
+                {
+                    // execute wipe script
+                    cmdBuffer.processWipe();
+                }
 
-        // reset the position of E_AXIS
-        current_position[E_AXIS] = current_epos;
-        if(EXTRUDER_RETRACTED(active_extruder) || TOOLCHANGE_RETRACTED(active_extruder))
-        {
-            current_position[E_AXIS] -= retract_recover_length[active_extruder];
+                // finish wipe moves
+                st_synchronize();
+
+                // reset wipe offset
+                current_position[Z_AXIS] += wipeOffset;
+                // raise buildplate if necessary
+                if (zoffset > 0.0f)
+                {
+                   current_position[Z_AXIS] += zoffset;
+                }
+
+				// reset the position of E_AXIS
+				current_position[E_AXIS] = current_epos;
+				if(EXTRUDER_RETRACTED(active_extruder) || TOOLCHANGE_RETRACTED(active_extruder))
+				{
+					current_position[E_AXIS] -= retract_recover_length[active_extruder];
+				}
+            }
         }
 
         feedrate = old_feedrate;
-        printing_state = PRINT_STATE_TOOLREADY;
+        if (printing_state < PRINT_STATE_ABORT)
+        {
+            printing_state = PRINT_STATE_TOOLREADY;
+        }
     }
     else
     {

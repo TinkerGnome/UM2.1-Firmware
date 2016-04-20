@@ -13,9 +13,9 @@ extern uint8_t primed;
 #define EXTRUDER_PRIMED      1
 #define ENDOFPRINT_RETRACT 128
 
-
 void lcd_menu_print_select();
 void lcd_clear_cache();
-void doCancelPrint();
+void abortPrint();
+
 
 #endif//ULTI_LCD2_MENU_PRINT_H
