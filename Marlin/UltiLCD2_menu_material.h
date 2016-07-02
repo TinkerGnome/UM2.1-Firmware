@@ -7,6 +7,7 @@ EEPROM structure:
 Total:             0x0000-0x1000
 Settings:          0x0064-0x00E0 0x7C? (careful with this one)
 FirstRunDone:      0x0400-0x0400 0x01
+Mark2Dual          0x0600-
 RuntimeStats:      0x0700-0x071C 0x1C
 Materials:         0x0800-0x09B1 (8+16)*18+1=0x1B1
 ExtraTemperatures: 0x0a00-0x0C40 (16*18*2)=0x240
@@ -29,7 +30,7 @@ struct materialSettings
     uint8_t fan_speed; //0-100% of requested speed by GCode
     int16_t flow;      //Flow modification in %
     float diameter; //Filament diameter in mm
-    char name[MATERIAL_NAME_SIZE];
+    char name[MATERIAL_NAME_SIZE+1];
     int16_t change_temperature;      //Temperature for the hotend during the change material procedure.
     int8_t change_preheat_wait_time; //when reaching the change material temperature, wait for this amount of seconds for the temperature to stabalize and the material to heatup.
 };
@@ -64,12 +65,12 @@ extern struct materialSettings material[EXTRUDERS];
 #define EEPROM_MATERIAL_CHANGE_WAIT_TIME(n)       ((uint8_t*)(EEPROM_MATERIAL_CHANGE_WAIT_TIME_OFFSET + uint16_t(n)))
 
 void lcd_menu_material();
-void lcd_change_to_menu_change_material(menuFunc_t return_menu);
+void lcd_change_to_menu_change_material(menuFunc_t return_menu, uint8_t e);
 void lcd_change_to_menu_insert_material(menuFunc_t return_menu);
 bool lcd_material_verify_material_settings();
 void lcd_material_reset_defaults();
 void lcd_material_set_material(uint8_t nr, uint8_t e);
-void lcd_material_store_material(uint8_t nr);
+void lcd_material_store_material(uint8_t nr, uint8_t e);
 void lcd_material_read_current_material();
 void lcd_material_store_current_material();
 

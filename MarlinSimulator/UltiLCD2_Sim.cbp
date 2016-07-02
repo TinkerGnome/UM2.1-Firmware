@@ -34,15 +34,20 @@
 			<Add option="-D__AVR_ATmega2560__=1" />
 			<Add option="-DARDUINO=100" />
 			<Add option="-DF_CPU=16000000" />
+			<Add option="-DEXTRUDERS=2" />
+			<Add option="-DTEMP_SENSOR_1=20" />
 			<Add directory="arduino_sim" />
 			<Add directory="avr_sim" />
-			<Add directory="C:/Software/SecretMarlin/UltiLCD2_Sim/" />
+			<Add directory="D:/SDL-1.2.15/include" />
 		</Compiler>
 		<Linker>
 			<Add library="SDLmain" />
 			<Add library="SDL" />
+			<Add directory="D:/SDL-1.2.15/lib" />
 		</Linker>
 		<Unit filename="../Marlin/Configuration.h" />
+		<Unit filename="../Marlin/ConfigurationDual.cpp" />
+		<Unit filename="../Marlin/ConfigurationDual.h" />
 		<Unit filename="../Marlin/ConfigurationStore.cpp" />
 		<Unit filename="../Marlin/ConfigurationStore.h" />
 		<Unit filename="../Marlin/Configuration_adv.h" />
@@ -72,6 +77,8 @@
 		<Unit filename="../Marlin/UltiLCD2_hi_lib.h" />
 		<Unit filename="../Marlin/UltiLCD2_low_lib.cpp" />
 		<Unit filename="../Marlin/UltiLCD2_low_lib.h" />
+		<Unit filename="../Marlin/UltiLCD2_menu_dual.cpp" />
+		<Unit filename="../Marlin/UltiLCD2_menu_dual.h" />
 		<Unit filename="../Marlin/UltiLCD2_menu_first_run.cpp" />
 		<Unit filename="../Marlin/UltiLCD2_menu_first_run.h" />
 		<Unit filename="../Marlin/UltiLCD2_menu_maintenance.cpp" />
@@ -80,13 +87,19 @@
 		<Unit filename="../Marlin/UltiLCD2_menu_material.h" />
 		<Unit filename="../Marlin/UltiLCD2_menu_print.cpp" />
 		<Unit filename="../Marlin/UltiLCD2_menu_print.h" />
+		<Unit filename="../Marlin/UltiLCD2_menu_utils.cpp" />
+		<Unit filename="../Marlin/UltiLCD2_menu_utils.h" />
 		<Unit filename="../Marlin/cardreader.cpp" />
 		<Unit filename="../Marlin/cardreader.h" />
+		<Unit filename="../Marlin/commandbuffer.cpp" />
+		<Unit filename="../Marlin/commandbuffer.h" />
 		<Unit filename="../Marlin/electronics_test.cpp" />
 		<Unit filename="../Marlin/electronics_test.h" />
 		<Unit filename="../Marlin/fastio.h" />
 		<Unit filename="../Marlin/lifetime_stats.cpp" />
 		<Unit filename="../Marlin/lifetime_stats.h" />
+		<Unit filename="../Marlin/machinesettings.cpp" />
+		<Unit filename="../Marlin/machinesettings.h" />
 		<Unit filename="../Marlin/motion_control.cpp" />
 		<Unit filename="../Marlin/motion_control.h" />
 		<Unit filename="../Marlin/pins.h" />
@@ -98,11 +111,6 @@
 		<Unit filename="../Marlin/temperature.cpp" />
 		<Unit filename="../Marlin/temperature.h" />
 		<Unit filename="../Marlin/thermistortables.h" />
-		<Unit filename="../Marlin/ultralcd.cpp" />
-		<Unit filename="../Marlin/ultralcd.h" />
-		<Unit filename="../Marlin/ultralcd_implementation_hitachi_HD44780.h" />
-		<Unit filename="../Marlin/ultralcd_implementation_ultiboard_v2.h" />
-		<Unit filename="../Marlin/ultralcd_st7920_u8glib_rrd.h" />
 		<Unit filename="../Marlin/watchdog.cpp" />
 		<Unit filename="../Marlin/watchdog.h" />
 		<Unit filename="arduino_sim/Arduino.h" />

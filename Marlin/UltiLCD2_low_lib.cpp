@@ -87,7 +87,7 @@ void lcd_lib_init()
 
     SET_OUTPUT(I2C_SDA_PIN);
     SET_OUTPUT(I2C_SCL_PIN);
-    
+
     //Set unused pins in the 10 pin connector to GND to improve shielding of the cable.
     SET_OUTPUT(LCD_PINS_D4); WRITE(LCD_PINS_D4, 0); //RXD3/PJ1
     SET_OUTPUT(LCD_PINS_ENABLE); WRITE(LCD_PINS_ENABLE, 0); //TXD3/PJ0
@@ -724,18 +724,27 @@ void lcd_lib_clear_gfx(uint8_t x, uint8_t y, const uint8_t* gfx)
     }
 }
 
+#define _BEEP(c, n) for(int8_t _i=0;_i<c;_i++) { WRITE(BEEPER, HIGH); _delay_us(n); WRITE(BEEPER, LOW); _delay_us(n); }
 void lcd_lib_beep()
 {
-#define _BEEP(c, n) for(int8_t _i=0;_i<c;_i++) { WRITE(BEEPER, HIGH); _delay_us(n); WRITE(BEEPER, LOW); _delay_us(n); }
     _BEEP(20, 366);
     _BEEP(10, 150);
-#undef _BEEP
+
 }
+
+//-----------------------------------------------------------------------------------------------------------------
+// very short tick for UI feedback -- 1 millisecond  long
+void lcd_lib_tick()
+{
+    _BEEP(10, 50);
+}
+#undef _BEEP
 
 int8_t lcd_lib_encoder_pos_interrupt = 0;
 int16_t lcd_lib_encoder_pos = 0;
 bool lcd_lib_button_pressed = false;
 bool lcd_lib_button_down;
+unsigned long last_user_interaction=0;
 
 #define ENCODER_ROTARY_BIT_0 _BV(0)
 #define ENCODER_ROTARY_BIT_1 _BV(1)
@@ -784,11 +793,13 @@ void lcd_lib_buttons_update_interrupt()
 void lcd_lib_buttons_update()
 {
     lcd_lib_encoder_pos += lcd_lib_encoder_pos_interrupt;
-    lcd_lib_encoder_pos_interrupt = 0;
 
     uint8_t buttonState = !READ(BTN_ENC);
     lcd_lib_button_pressed = (buttonState && !lcd_lib_button_down);
     lcd_lib_button_down = buttonState;
+
+	if (lcd_lib_button_down || lcd_lib_encoder_pos_interrupt!=0 ) last_user_interaction=millis();
+    lcd_lib_encoder_pos_interrupt = 0;
 }
 
 char* int_to_string(int i, char* temp_buffer, const char* p_postfix)

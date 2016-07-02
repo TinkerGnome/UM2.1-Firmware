@@ -142,6 +142,7 @@ FORCE_INLINE bool blocks_queued()
 
 #ifdef PREVENT_DANGEROUS_EXTRUDE
 void set_extrude_min_temp(float temp);
+float get_extrude_min_temp();
 #endif
 
 void reset_acceleration_rates();

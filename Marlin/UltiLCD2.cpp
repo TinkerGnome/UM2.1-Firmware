@@ -12,7 +12,6 @@
 #include "temperature.h"
 #include "pins.h"
 
-#define SERIAL_CONTROL_TIMEOUT 5000
 // coefficient for the exponential moving average
 #define ALPHA 0.05f
 #define ONE_MINUS_ALPHA 0.95f
@@ -65,6 +64,8 @@ void lcd_update()
 
     if (IsStopped())
     {
+		char buffer[24] = {0};
+		strcpy_P(buffer, PSTR("ultimaker.com/"));
         lcd_lib_clear();
         lcd_lib_draw_string_centerP(10, PSTR("ERROR - STOPPED"));
         switch(StoppedReason())
@@ -72,45 +73,41 @@ void lcd_update()
         case STOP_REASON_MAXTEMP:
         case STOP_REASON_MINTEMP:
             lcd_lib_draw_string_centerP(20, PSTR("Temp sensor"));
-            lcd_lib_draw_stringP(1, 40, PSTR("Go to:"));
-            lcd_lib_draw_stringP(1, 50, PSTR("ultimaker.com/ER01"));
+			strcat_P(buffer, PSTR("ER01"));
             break;
         case STOP_REASON_MAXTEMP_BED:
             lcd_lib_draw_string_centerP(20, PSTR("Temp sensor BED"));
-            lcd_lib_draw_stringP(1, 40, PSTR("Go to:"));
-            lcd_lib_draw_stringP(1, 50, PSTR("ultimaker.com/ER02"));
+			strcat_P(buffer, PSTR("ER02"));
             break;
         case STOP_REASON_HEATER_ERROR:
             lcd_lib_draw_string_centerP(20, PSTR("Heater error"));
-            lcd_lib_draw_stringP(1, 40, PSTR("Go to:"));
-            lcd_lib_draw_stringP(1, 50, PSTR("ultimaker.com/ER03"));
+			strcat_P(buffer, PSTR("ER03"));
             break;
         case STOP_REASON_SAFETY_TRIGGER:
             lcd_lib_draw_string_centerP(20, PSTR("Safety circuit"));
-            lcd_lib_draw_stringP(1, 40, PSTR("Go to:"));
-            lcd_lib_draw_stringP(1, 50, PSTR("ultimaker.com/ER04"));
+			strcat_P(buffer, PSTR("ER04"));
             break;
         case STOP_REASON_Z_ENDSTOP_BROKEN_ERROR:
             lcd_lib_draw_string_centerP(20, PSTR("Z switch broken"));
-            lcd_lib_draw_stringP(1, 40, PSTR("Go to:"));
-            lcd_lib_draw_stringP(1, 50, PSTR("ultimaker.com/ER05"));
+			strcat_P(buffer, PSTR("ER05"));
             break;
         case STOP_REASON_Z_ENDSTOP_STUCK_ERROR:
             lcd_lib_draw_string_centerP(20, PSTR("Z switch stuck"));
-            lcd_lib_draw_stringP(1, 40, PSTR("Go to:"));
-            lcd_lib_draw_stringP(1, 50, PSTR("ultimaker.com/ER06"));
+			strcat_P(buffer, PSTR("ER06"));
             break;
         case STOP_REASON_XY_ENDSTOP_BROKEN_ERROR:
             lcd_lib_draw_string_centerP(20, PSTR("X or Y switch broken"));
-            lcd_lib_draw_stringP(1, 40, PSTR("Go to:"));
-            lcd_lib_draw_stringP(1, 50, PSTR("ultimaker.com/ER07"));
+			strcat_P(buffer, PSTR("ER07"));
             break;
         case STOP_REASON_XY_ENDSTOP_STUCK_ERROR:
             lcd_lib_draw_string_centerP(20, PSTR("X or Y switch stuck"));
-            lcd_lib_draw_stringP(1, 40, PSTR("Go to:"));
-            lcd_lib_draw_stringP(1, 50, PSTR("ultimaker.com/ER07"));
+			strcat_P(buffer, PSTR("ER07"));
             break;
+		default:
+			strcat_P(buffer, PSTR("support"));
         }
+        lcd_lib_draw_string_centerP(40, PSTR("Go to:"));
+        lcd_lib_draw_string_center(50, buffer);
         LED_GLOW_ERROR();
         lcd_lib_update_screen();
     }else if (millis() - lastSerialCommandTime < SERIAL_CONTROL_TIMEOUT)
@@ -169,14 +166,19 @@ void lcd_menu_startup()
         //lcd_lib_clear_gfx(0, 22, ultimakerTextOutlineGfx);
         lcd_lib_draw_gfx(0, 22, ultimakerTextGfx);
     }
+    lcd_lib_draw_string_centerP(53, PSTR(STRING_CONFIG_H_AUTHOR));
     lcd_lib_update_screen();
 
+#ifndef DUAL_FAN
     if (led_mode == LED_MODE_ALWAYS_ON)
         analogWrite(LED_PIN, int(led_glow << 1) * led_brightness_level / 100);
+#endif
     if (led_glow_dir || lcd_lib_button_pressed)
     {
+#ifndef DUAL_FAN
         if (led_mode == LED_MODE_ALWAYS_ON)
             analogWrite(LED_PIN, 255 * led_brightness_level / 100);
+#endif
         led_glow = led_glow_dir = 0;
         LED_NORMAL();
         if (lcd_lib_button_pressed)
@@ -225,7 +227,6 @@ void doCooldown()
         setTargetHotend(0, n);
     setTargetBed(0);
     fanSpeed = 0;
-
     //quickStop();         //Abort all moves already in the planner
 }
 

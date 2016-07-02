@@ -7,11 +7,15 @@
 #define LCD_DETAIL_CACHE_SIZE (5+8*EXTRUDERS+8*EXTRUDERS)
 #define LCD_CACHE_SIZE (1 + (2 + LONG_FILENAME_LENGTH) * LCD_CACHE_COUNT + LCD_DETAIL_CACHE_SIZE)
 extern uint8_t lcd_cache[LCD_CACHE_SIZE];
+#define LCD_CACHE_FILENAME(n) ((char*)&lcd_cache[2*LCD_CACHE_COUNT + (n) * LONG_FILENAME_LENGTH])
+
+extern uint8_t primed;
+#define EXTRUDER_PRIMED      1
+#define ENDOFPRINT_RETRACT 128
 
 void lcd_menu_print_select();
 void lcd_clear_cache();
-void doCancelPrint();
+void abortPrint();
 
-extern bool primed;
 
 #endif//ULTI_LCD2_MENU_PRINT_H

@@ -1419,7 +1419,7 @@ bool SdBaseFile::rmRfStar() {
       if (!f.remove()) goto fail;
     }
     // position to next entry if required
-    if (curPosition_ != (32*(index + 1))) {
+    if (curPosition_ != (32u*(index + 1))) {
       if (!seekSet(32*(index + 1))) goto fail;
     }
   }

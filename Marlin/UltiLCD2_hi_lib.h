@@ -10,7 +10,7 @@ typedef void (*entryDetailsCallback_t)(uint8_t nr);
 
 #define ENCODER_TICKS_PER_MAIN_MENU_ITEM 8
 #define ENCODER_TICKS_PER_SCROLL_MENU_ITEM 4
-#define ENCODER_NO_SELECTION (ENCODER_TICKS_PER_MAIN_MENU_ITEM * -11)
+#define ENCODER_NO_SELECTION (ENCODER_TICKS_PER_MAIN_MENU_ITEM * -15)
 #define MAIN_MENU_ITEM_POS(n)  (ENCODER_TICKS_PER_MAIN_MENU_ITEM * (n) + ENCODER_TICKS_PER_MAIN_MENU_ITEM / 2)
 #define SCROLL_MENU_ITEM_POS(n)  (ENCODER_TICKS_PER_SCROLL_MENU_ITEM * (n) + ENCODER_TICKS_PER_SCROLL_MENU_ITEM / 2)
 #define SELECT_MAIN_MENU_ITEM(n)  do { lcd_lib_encoder_pos = MAIN_MENU_ITEM_POS(n); } while(0)
@@ -20,6 +20,7 @@ typedef void (*entryDetailsCallback_t)(uint8_t nr);
 #define IS_SELECTED_MAIN(n) ((n) == SELECTED_MAIN_MENU_ITEM())
 #define IS_SELECTED_SCROLL(n) ((n) == SELECTED_SCROLL_MENU_ITEM())
 
+void lcd_replace_menu(menuFunc_t nextMenu, int16_t newEncoderPos = ENCODER_NO_SELECTION);
 void lcd_change_to_menu(menuFunc_t nextMenu, int16_t newEncoderPos = ENCODER_NO_SELECTION);
 
 void lcd_tripple_menu(const char* left, const char* right, const char* bottom);
@@ -45,6 +46,8 @@ extern menuFunc_t previousMenu;
 extern menuFunc_t postMenuCheck;
 extern int16_t previousEncoderPos;
 extern uint8_t minProgress;
+
+FORCE_INLINE void lcd_change_to_previous_menu() { lcd_change_to_menu(previousMenu, previousEncoderPos); }
 
 #define LCD_EDIT_SETTING(_setting, _name, _postfix, _min, _max) do { \
             lcd_change_to_menu(lcd_menu_edit_setting); \

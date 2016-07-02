@@ -78,12 +78,24 @@ bool abort_on_endstop_hit = false;
   int motor_current_setting[3] = DEFAULT_PWM_MOTOR_CURRENT;
 #endif
 
+#if defined(X_MIN_PIN) && X_MIN_PIN > -1
 static bool old_x_min_endstop=false;
+#endif
+#if defined(X_MAX_PIN) && X_MAX_PIN > -1
 static bool old_x_max_endstop=false;
+#endif
+#if defined(Y_MIN_PIN) && Y_MIN_PIN > -1
 static bool old_y_min_endstop=false;
+#endif
+#if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
 static bool old_y_max_endstop=false;
+#endif
+#if defined(Z_MIN_PIN) && Z_MIN_PIN > -1
 static bool old_z_min_endstop=false;
+#endif
+#if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
 static bool old_z_max_endstop=false;
+#endif
 
 static bool check_endstops = true;
 
@@ -198,7 +210,7 @@ void checkHitEndstops()
      SERIAL_ECHOPAIR(" Z:",(float)endstops_trigsteps[Z_AXIS]/axis_steps_per_unit[Z_AXIS]);
      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Z");
    }
-   SERIAL_ECHOLN("");
+   SERIAL_EOL;
    endstop_x_hit=false;
    endstop_y_hit=false;
    endstop_z_hit=false;
@@ -878,10 +890,7 @@ void st_init()
 void st_synchronize()
 {
     while( blocks_queued()) {
-    manage_heater();
-    manage_inactivity();
-    lcd_update();
-    lifetime_stats_tick();
+    idle();
   }
 }
 

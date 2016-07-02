@@ -492,11 +492,14 @@ void check_axes_activity()
       fan_kick_end = 0;
     }
   #endif//FAN_KICKSTART_TIME
-  #ifdef FAN_SOFT_PWM
+#ifdef FAN_SOFT_PWM
   fanSpeedSoftPwm = tail_fan_speed;
-  #else
+#else
   analogWrite(FAN_PIN,tail_fan_speed);
-  #endif//!FAN_SOFT_PWM
+ #ifdef DUAL_FAN
+  analogWrite(LED_PIN, (active_extruder>0) ? tail_fan_speed : 0);
+ #endif
+#endif//!FAN_SOFT_PWM
 #endif//FAN_PIN > -1
 #ifdef AUTOTEMP
   getHighESpeed();
@@ -527,10 +530,7 @@ void plan_buffer_line(const float &x, const float &y, const float &z, const floa
   // Rest here until there is room in the buffer.
   while(block_buffer_tail == next_buffer_head)
   {
-    manage_heater();
-    manage_inactivity();
-    lcd_update();
-    lifetime_stats_tick();
+    idle();
   }
 
   // The target position of the tool in absolute steps
@@ -953,6 +953,11 @@ uint8_t movesplanned()
 void set_extrude_min_temp(float temp)
 {
   extrude_min_temp=temp;
+}
+
+float get_extrude_min_temp()
+{
+  return extrude_min_temp;
 }
 #endif
 

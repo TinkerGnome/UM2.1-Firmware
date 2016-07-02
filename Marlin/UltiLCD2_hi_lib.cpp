@@ -21,16 +21,22 @@ int16_t lcd_setting_min;
 int16_t lcd_setting_max;
 int16_t lcd_setting_start_value;
 
-void lcd_change_to_menu(menuFunc_t nextMenu, int16_t newEncoderPos)
+void lcd_replace_menu(menuFunc_t nextMenu, int16_t newEncoderPos)
 {
     minProgress = 0;
     led_glow = led_glow_dir = 0;
     LED_NORMAL();
     lcd_lib_beep();
-    previousMenu = currentMenu;
-    previousEncoderPos = lcd_lib_encoder_pos;
     currentMenu = nextMenu;
     lcd_lib_encoder_pos = newEncoderPos;
+}
+
+void lcd_change_to_menu(menuFunc_t nextMenu, int16_t newEncoderPos)
+{
+    previousMenu = currentMenu;
+    previousEncoderPos = lcd_lib_encoder_pos;
+    minProgress = 0;
+    lcd_replace_menu(nextMenu, newEncoderPos);
 }
 
 void lcd_tripple_menu(const char* left, const char* right, const char* bottom)
@@ -125,12 +131,12 @@ void lcd_question_screen(menuFunc_t optionAMenu, menuFunc_t callbackOnA, const c
     {
         if (IS_SELECTED_MAIN(0))
         {
-            if (callbackOnA) callbackOnA();
             if (optionAMenu) lcd_change_to_menu(optionAMenu);
+            if (callbackOnA) callbackOnA();
         }else if (IS_SELECTED_MAIN(1))
         {
-            if (callbackOnB) callbackOnB();
             if (optionBMenu) lcd_change_to_menu(optionBMenu);
+            if (callbackOnB) callbackOnB();
         }
     }
 
@@ -251,7 +257,7 @@ void lcd_menu_edit_setting()
 
     lcd_basic_screen();
     lcd_lib_draw_string_centerP(20, lcd_setting_name);
-    char buffer[16];
+    char buffer[20];
     if (lcd_setting_type == 3)
         float_to_string(float(lcd_lib_encoder_pos) / 100.0, buffer, lcd_setting_postfix);
     else
