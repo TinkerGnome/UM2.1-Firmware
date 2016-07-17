@@ -1704,6 +1704,23 @@ void process_command(const char *strCmd)
         {
           if(i == E_AXIS) { // E
             float value = code_value();
+            #if EXTRUDERS > 1
+            if ((value > 0.0) && (value < 20.0)) {
+              // increase e constants if M92 E14 is given for netfab.
+              float factor = GET_E_STEPS / value;
+              max_e_jerk *= factor;
+              max_feedrate[i] *= factor;
+              axis_steps_per_sqr_second[i] *= factor;
+            }
+            if (active_extruder)
+            {
+                e2_steps_per_unit = value;
+            }
+            else
+            {
+                axis_steps_per_unit[i] = value;
+            }
+            #else
             if(value < 20.0) {
               float factor = axis_steps_per_unit[i] / value; // increase e constants if M92 E14 is given for netfab.
               max_e_jerk *= factor;
@@ -1711,6 +1728,7 @@ void process_command(const char *strCmd)
               axis_steps_per_sqr_second[i] *= factor;
             }
             axis_steps_per_unit[i] = value;
+            #endif
           }
           else {
             axis_steps_per_unit[i] = code_value();
@@ -2883,9 +2901,16 @@ void manage_inactivity()
      enable_e0();
      float oldepos=current_position[E_AXIS];
      float oldedes=destination[E_AXIS];
+     #if EXTRUDERS > 1
+     const float e_steps = active_extruder ? e2_steps_per_unit : axis_steps_per_unit[E_AXIS];
+     plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS],
+                      current_position[E_AXIS]+EXTRUDER_RUNOUT_EXTRUDE*EXTRUDER_RUNOUT_ESTEPS/e_steps,
+                      EXTRUDER_RUNOUT_SPEED/60.*EXTRUDER_RUNOUT_ESTEPS/e_steps, active_extruder);
+     #else
      plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS],
                       current_position[E_AXIS]+EXTRUDER_RUNOUT_EXTRUDE*EXTRUDER_RUNOUT_ESTEPS/axis_steps_per_unit[E_AXIS],
                       EXTRUDER_RUNOUT_SPEED/60.*EXTRUDER_RUNOUT_ESTEPS/axis_steps_per_unit[E_AXIS], active_extruder);
+     #endif
      current_position[E_AXIS]=oldepos;
      destination[E_AXIS]=oldedes;
      plan_set_e_position(oldepos);

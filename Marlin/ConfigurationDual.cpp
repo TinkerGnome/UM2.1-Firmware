@@ -3,6 +3,9 @@
 
 #if (EXTRUDERS > 1)
 
+#include "temperature.h"
+#include "stepper.h"
+
 //Random number to verify that the dual settings are already written to the EEPROM
 #define EEPROM_DUAL_MAGIC 0x218DE93C
 
@@ -13,7 +16,7 @@
 // in the functions below, also increment the version number. This makes sure that
 // the default values are used whenever there is a change to the data, to prevent
 // wrong data being written to the variables.
-#define STORE_DUAL_VERSION 3
+#define STORE_DUAL_VERSION 4
 
 #define DOCK_X_POSITION    220.0
 #define DOCK_Y_POSITION     41.0
@@ -28,6 +31,11 @@ float wipe_position[2];
 float toolchange_retractlen[EXTRUDERS];
 float toolchange_retractfeedrate[EXTRUDERS];
 float toolchange_prime[EXTRUDERS];
+float pid2[3];
+float e2_steps_per_unit;
+#if EXTRUDERS > 1 && defined(MOTOR_CURRENT_PWM_E_PIN) && MOTOR_CURRENT_PWM_E_PIN > -1
+uint16_t motor_current_e2;
+#endif
 
 #ifdef EEPROM_SETTINGS
 static bool Dual_RetrieveVersion(uint16_t &version)
@@ -103,6 +111,30 @@ void Dual_RetrieveSettings()
         }
         Dual_StoreRetract();
 
+//        // write version
+//        uint16_t version = STORE_DUAL_VERSION;
+//        eeprom_write_word((uint16_t*)EEPROM_DUAL_VERSION, version);
+//        // validate data
+//        eeprom_write_dword((uint32_t*)(EEPROM_DUAL_START), EEPROM_DUAL_MAGIC);
+    }
+    else
+    {
+        eeprom_read_block(toolchange_prime, (uint8_t*)EEPROM_DUAL_EXTRAPRIME, sizeof(toolchange_prime));
+    }
+
+    if (!bValid || version < 4)
+    {
+        pid2[0] = Kp;
+        pid2[1] = Ki;
+        pid2[2] = Kd;
+        Dual_StorePID2();
+
+        e2_steps_per_unit = axis_steps_per_unit[E_AXIS];
+        Dual_StoreStepsE2();
+
+        motor_current_e2 = motor_current_setting[2];
+        Dual_StoreCurrentE2();
+
         // write version
         uint16_t version = STORE_DUAL_VERSION;
         eeprom_write_word((uint16_t*)EEPROM_DUAL_VERSION, version);
@@ -111,8 +143,11 @@ void Dual_RetrieveSettings()
     }
     else
     {
-        eeprom_read_block(toolchange_prime, (uint8_t*)EEPROM_DUAL_EXTRAPRIME, sizeof(toolchange_prime));
+        eeprom_read_block(pid2, (uint8_t*)EEPROM_DUAL_PID2, sizeof(pid2));
+        e2_steps_per_unit = eeprom_read_float((const float*)EEPROM_DUAL_STEPS_E2);
+        motor_current_e2 = eeprom_read_word((const uint16_t*)EEPROM_DUAL_CURRENT_E2);
     }
+
     Dual_PrintSettings();
 }
 

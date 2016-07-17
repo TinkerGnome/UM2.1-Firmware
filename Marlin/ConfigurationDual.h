@@ -5,6 +5,8 @@
 
 #if (EXTRUDERS > 1)
 
+#include "planner.h"
+
 #define EEPROM_ADDHOMEING_Z2     0x606  //  4 Byte
 #define EEPROM_EXTRUDER_OFFSET   0x60A  // 16 Byte
 #define EEPROM_DOCK_POSITION     0x61A  //  8 Byte
@@ -13,7 +15,10 @@
 #define EEPROM_DUAL_RETRACTLEN   0x62B  //  8 Byte toolchange_retract_length
 #define EEPROM_DUAL_RETRACTSPEED 0x633  //  8 Byte toolchange_retract_feedrate
 #define EEPROM_DUAL_EXTRAPRIME   0x63B  //  8 Byte toolchange_prime
-#define EEPROM_DUAL_RESERVED     0x643  // next address
+#define EEPROM_DUAL_PID2         0x643  // 12 Byte float[3]
+#define EEPROM_DUAL_CURRENT_E2   0x64F  //  2 Byte uint16_t
+#define EEPROM_DUAL_STEPS_E2     0x651  //  4 Byte float
+#define EEPROM_DUAL_RESERVED     0x655  // next address
 
 // dual state flags
 #define DUAL_ENABLED         1
@@ -27,6 +32,10 @@ extern float wipe_position[2];
 extern float toolchange_retractlen[EXTRUDERS];
 extern float toolchange_retractfeedrate[EXTRUDERS];
 extern float toolchange_prime[EXTRUDERS];
+extern float pid2[3];
+#if EXTRUDERS > 1 && defined(MOTOR_CURRENT_PWM_E_PIN) && MOTOR_CURRENT_PWM_E_PIN > -1
+extern uint16_t motor_current_e2;
+#endif
 
 #ifdef EEPROM_CHITCHAT
 void Dual_PrintSettings();
@@ -48,6 +57,9 @@ FORCE_INLINE void Dual_StoreRetract()
     eeprom_write_block(toolchange_retractfeedrate, (uint8_t*)EEPROM_DUAL_RETRACTSPEED, sizeof(toolchange_retractfeedrate));
     eeprom_write_block(toolchange_prime, (uint8_t*)EEPROM_DUAL_EXTRAPRIME, sizeof(toolchange_prime));
 }
+FORCE_INLINE void Dual_StorePID2() { eeprom_write_block(pid2, (uint8_t*)EEPROM_DUAL_PID2, sizeof(pid2)); }
+FORCE_INLINE void Dual_StoreCurrentE2() { eeprom_write_word((uint16_t*)EEPROM_DUAL_CURRENT_E2, motor_current_e2); }
+FORCE_INLINE void Dual_StoreStepsE2() { eeprom_write_float((float*)EEPROM_DUAL_STEPS_E2, e2_steps_per_unit); }
 #else
 FORCE_INLINE void Dual_RetrieveSettings() {}
 FORCE_INLINE void Dual_ClearStorage() {}
@@ -56,7 +68,10 @@ FORCE_INLINE void Dual_StoreDockPosition() {}
 FORCE_INLINE void Dual_StoreWipePosition() {}
 FORCE_INLINE void Dual_StoreAddHomeingZ2() {}
 FORCE_INLINE void Dual_StoreRetract() {}
-#endif
+FORCE_INLINE void Dual_StorePID2() {}
+FORCE_INLINE void Dual_StoreCurrentE2() {}
+FORCE_INLINE void Dual_StoreStepsE2() {}
+#endif //EEPROM_SETTINGS
 
 #define IS_DUAL_ENABLED (dual_state & DUAL_ENABLED)
 #define IS_TOOLCHANGE_ENABLED ((dual_state & DUAL_ENABLED) && (dual_state & DUAL_TOOLCHANGE))

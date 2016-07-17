@@ -65,12 +65,11 @@ void abortPrint()
     doCooldown();
     clear_command_queue();
 
-    for (uint8_t axis=0; axis<NUM_AXIS; ++axis)
+    for (uint8_t axis=0; axis<E_AXIS; ++axis)
     {
         current_position[axis] = st_get_position(axis)/axis_steps_per_unit[axis];
     }
-    current_position[E_AXIS] /= volume_to_filament_length[active_extruder];
-
+    current_position[E_AXIS] = (st_get_position(E_AXIS)/GET_E_STEPS)/volume_to_filament_length[active_extruder];
 
     // set up the end of print retraction
     if ((primed & ENDOFPRINT_RETRACT) && (primed & (EXTRUDER_PRIMED << active_extruder)))

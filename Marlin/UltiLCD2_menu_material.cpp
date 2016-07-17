@@ -212,7 +212,7 @@ static void lcd_menu_change_material_remove()
     }
 
     long pos = -st_get_position(E_AXIS);
-    long targetPos = lround(FILAMENT_REVERSAL_LENGTH * axis_steps_per_unit[E_AXIS]);
+    long targetPos = lround(FILAMENT_REVERSAL_LENGTH * GET_E_STEPS);
     uint8_t progress = (pos * 125 / targetPos);
     lcd_progressbar(progress);
 
@@ -348,7 +348,7 @@ static void lcd_menu_change_material_insert_forward()
     }
 
     long pos = st_get_position(E_AXIS);
-    long targetPos = lround(FILAMENT_FORWARD_LENGTH*axis_steps_per_unit[E_AXIS]);
+    long targetPos = lround(FILAMENT_FORWARD_LENGTH*GET_E_STEPS);
     uint8_t progress = (pos * 125 / targetPos);
     lcd_progressbar(progress);
 
