@@ -1702,7 +1702,7 @@ void process_command(const char *strCmd)
       {
         if(code_seen(axis_codes[i]))
         {
-          if(i == 3) { // E
+          if(i == E_AXIS) { // E
             float value = code_value();
             if(value < 20.0) {
               float factor = axis_steps_per_unit[i] / value; // increase e constants if M92 E14 is given for netfab.
@@ -1716,6 +1716,7 @@ void process_command(const char *strCmd)
             axis_steps_per_unit[i] = code_value();
           }
         }
+        plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
       }
       break;
     case 115: // M115
