@@ -376,7 +376,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #endif
 // safe y-position for dual head mode
 #ifndef DUAL_Y_MIN_POS
-#define DUAL_Y_MIN_POS 65
+#define DUAL_Y_MIN_POS 55
 #endif
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)

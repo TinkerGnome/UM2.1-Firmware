@@ -522,17 +522,17 @@ static const menu_t & get_tcretract_menuoption(uint8_t nr, menu_t &opt)
     }
     else if (nr == index++)
     {
-        // nozzle 1 retract len
+        // retract len
         opt.setData(MENU_INPLACE_EDIT, lcd_tune_tcretractlen, 2);
     }
     else if (nr == index++)
     {
-        // nozzle 1 retract feedrate
+        // retract feedrate
         opt.setData(MENU_INPLACE_EDIT, lcd_tune_tcretractfeed, 2);
     }
     else if (nr == index++)
     {
-        // nozzle 2 retract len
+        // extra priming len
         opt.setData(MENU_INPLACE_EDIT, lcd_tune_tcprime, 2);
     }
     return opt;

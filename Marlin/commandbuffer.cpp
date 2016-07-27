@@ -152,6 +152,7 @@ static char * toolchange_retract(char *buffer, uint8_t e)
     else
     {
         CLEAR_TOOLCHANGE_RETRACT(e);
+        retract_recover_length[e] = 0.0f;
     }
 #endif // FWRETRACT
     // dtostrf(-length, 4, 2, LCD_CACHE_FILENAME(3));
@@ -242,6 +243,7 @@ void CommandBuffer::processWipe()
     float length = TOOLCHANGE_RETRACTED(active_extruder) ? retract_recover_length[active_extruder] : toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
     CLEAR_TOOLCHANGE_RETRACT(active_extruder);
     CLEAR_EXTRUDER_RETRACT(active_extruder);
+    retract_recover_length[active_extruder] = 0.0f;
 #else
     float length = toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
 #endif // FWRETRACT

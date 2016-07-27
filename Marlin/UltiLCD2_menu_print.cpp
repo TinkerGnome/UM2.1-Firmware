@@ -65,11 +65,12 @@ void abortPrint()
     doCooldown();
     clear_command_queue();
 
-    for (uint8_t axis=0; axis<E_AXIS; ++axis)
+    for (uint8_t axis=0; axis<NUM_AXIS; ++axis)
     {
         current_position[axis] = st_get_position(axis)/axis_steps_per_unit[axis];
     }
-    current_position[E_AXIS] = (st_get_position(E_AXIS)/GET_E_STEPS)/volume_to_filament_length[active_extruder];
+    current_position[E_AXIS] /= volume_to_filament_length[active_extruder];
+
 
     // set up the end of print retraction
     if ((primed & ENDOFPRINT_RETRACT) && (primed & (EXTRUDER_PRIMED << active_extruder)))
@@ -246,10 +247,11 @@ static void doStartPrint()
     // recover wipe retract
     if (primed & (EXTRUDER_PRIMED << active_extruder))
     {
-        process_command_P(PSTR("G11"));
+        // process_command_P(PSTR("G11"));
         current_position[E_AXIS] = 0.0;
         plan_set_e_position(0);
         enquecommand_P(PSTR("G1 E0"));
+        enquecommand_P(PSTR("G11"));
     }
 #endif
 
@@ -539,15 +541,16 @@ void lcd_menu_print_select()
                         fanSpeedPercent = 0;
                         for(uint8_t e=0; e<EXTRUDERS; e++)
                         {
+                            volume_to_filament_length[e] = 1.0 / (M_PI * (material[e].diameter / 2.0) * (material[e].diameter / 2.0));
+                            extrudemultiply[e] = material[e].flow;
+                            target_temperature[e] = 0;
+
                             if (LCD_DETAIL_CACHE_MATERIAL(e) < 1)
                                 continue;
-                            target_temperature[e] = 0;
 #if TEMP_SENSOR_BED != 0
                             target_temperature_bed = max(target_temperature_bed, material[e].bed_temperature);
 #endif
                             fanSpeedPercent = max(fanSpeedPercent, material[e].fan_speed);
-                            volume_to_filament_length[e] = 1.0 / (M_PI * (material[e].diameter / 2.0) * (material[e].diameter / 2.0));
-                            extrudemultiply[e] = material[e].flow;
                         }
 
                         if (strcasecmp(material[0].name, LCD_DETAIL_CACHE_MATERIAL_TYPE(0)) != 0)

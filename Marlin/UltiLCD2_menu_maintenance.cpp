@@ -27,7 +27,6 @@ static void lcd_menu_advanced_version();
 static void lcd_menu_advanced_stats();
 static void lcd_menu_maintenance_motion();
 static void lcd_menu_advanced_factory_reset();
-static void lcd_menu_steps();
 
 void lcd_menu_maintenance()
 {
@@ -509,8 +508,6 @@ static char* lcd_motion_item(uint8_t nr)
         strcpy_P(card.longFilename, PSTR("Current Z"));
     else if (nr == 8)
         strcpy_P(card.longFilename, PSTR("Current E"));
-    else if (nr == 9)
-        strcpy_P(card.longFilename, PSTR("Axis steps/mm"));
     else
         strcpy_P(card.longFilename, PSTR("???"));
     return card.longFilename;
@@ -519,7 +516,9 @@ static char* lcd_motion_item(uint8_t nr)
 static void lcd_motion_details(uint8_t nr)
 {
     char buffer[16];
-    if(nr == 1)
+    if (nr == 0)
+        return;
+    else if(nr == 1)
         int_to_string(acceleration, buffer, PSTR("mm/sec^2"));
     else if(nr == 2)
         int_to_string(max_xy_jerk, buffer, PSTR("mm/sec"));
@@ -535,14 +534,12 @@ static void lcd_motion_details(uint8_t nr)
         int_to_string(motor_current_setting[1], buffer, PSTR("mA"));
     else if(nr == 8)
         int_to_string(motor_current_setting[2], buffer, PSTR("mA"));
-    else
-        return;
     lcd_lib_draw_string(5, 53, buffer);
 }
 
 static void lcd_menu_maintenance_motion()
 {
-    lcd_scroll_menu(PSTR("MOTION"), 10, lcd_motion_item, lcd_motion_details);
+    lcd_scroll_menu(PSTR("MOTION"), 9, lcd_motion_item, lcd_motion_details);
     if (lcd_lib_button_pressed)
     {
         if (IS_SELECTED_SCROLL(0))
@@ -569,8 +566,6 @@ static void lcd_menu_maintenance_motion()
             LCD_EDIT_SETTING(motor_current_setting[1], "Current Z", "mA", 0, 1300);
         else if (IS_SELECTED_SCROLL(8))
             LCD_EDIT_SETTING(motor_current_setting[2], "Current E", "mA", 0, 1300);
-        else if (IS_SELECTED_SCROLL(9))
-            lcd_change_to_menu(lcd_menu_steps, SCROLL_MENU_ITEM_POS(1));
     }
 }
 
@@ -645,254 +640,6 @@ static void lcd_menu_maintenance_led()
             lcd_lib_beep();
         }
     }
-}
-
-static void lcd_cancel_steps()
-{
-    plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
-    lcd_change_to_previous_menu();
-}
-
-static void lcd_store_steps()
-{
-    Config_StoreSettings();
-    Dual_StoreStepsE2();
-    lcd_cancel_steps();
-}
-
-static void lcd_steps_x()
-{
-    lcd_tune_value(axis_steps_per_unit[X_AXIS], 0.0f, 9999.0f, 0.01f);
-}
-
-static void lcd_steps_y()
-{
-    lcd_tune_value(axis_steps_per_unit[Y_AXIS], 0.0f, 9999.0f, 0.01f);
-}
-
-static void lcd_steps_z()
-{
-    lcd_tune_value(axis_steps_per_unit[Z_AXIS], 0.0f, 9999.0f, 0.01f);
-}
-
-static void lcd_steps_e()
-{
-    lcd_tune_value(axis_steps_per_unit[E_AXIS], 0.0f, 9999.0f, 0.01f);
-}
-
-#if EXTRUDERS > 1
-static void lcd_steps_e2()
-{
-    lcd_tune_value(e2_steps_per_unit, 0.0f, 9999.0f, 0.01f);
-}
-#endif
-
-// create menu options for "axis steps/mm"
-static const menu_t & get_steps_menuoption(uint8_t nr, menu_t &opt)
-{
-    uint8_t index(0);
-    if (nr == index++)
-    {
-        // STORE
-        opt.setData(MENU_NORMAL, lcd_store_steps);
-    }
-    else if (nr == index++)
-    {
-        // RETURN
-        opt.setData(MENU_NORMAL, lcd_cancel_steps);
-    }
-    else if (nr == index++)
-    {
-        // x steps
-        opt.setData(MENU_INPLACE_EDIT, lcd_steps_x, 5);
-    }
-    else if (nr == index++)
-    {
-        // y steps
-        opt.setData(MENU_INPLACE_EDIT, lcd_steps_y, 5);
-    }
-    else if (nr == index++)
-    {
-        // z steps
-        opt.setData(MENU_INPLACE_EDIT, lcd_steps_z, 5);
-    }
-    else if (nr == index++)
-    {
-        // e steps
-        opt.setData(MENU_INPLACE_EDIT, lcd_steps_e, 5);
-    }
-    #if EXTRUDERS > 1
-    else if (nr == index++)
-    {
-        // e steps
-        opt.setData(MENU_INPLACE_EDIT, lcd_steps_e2, 5);
-    }
-    #endif
-    return opt;
-}
-
-static void drawStepsSubmenu(uint8_t nr, uint8_t &flags)
-{
-    uint8_t index(0);
-    char buffer[32] = {0};
-    if (nr == index++)
-    {
-        // Store
-        if (flags & MENU_SELECTED)
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("Store steps/mm"));
-            flags |= MENU_STATUSLINE;
-        }
-        LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT
-                                , BOTTOM_MENU_YPOS
-                                , 52
-                                , LCD_CHAR_HEIGHT
-                                , PSTR("STORE")
-                                , ALIGN_CENTER
-                                , flags);
-    }
-    else if (nr == index++)
-    {
-        // RETURN
-        LCDMenu::drawMenuBox(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
-                           , BOTTOM_MENU_YPOS
-                           , 52
-                           , LCD_CHAR_HEIGHT
-                           , flags);
-        if (flags & MENU_SELECTED)
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("Click to return"));
-            flags |= MENU_STATUSLINE;
-        }
-        LCDMenu::drawMenuString_P(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
-                                , BOTTOM_MENU_YPOS
-                                , 52
-                                , LCD_CHAR_HEIGHT
-                                , PSTR("RETURN")
-                                , ALIGN_CENTER
-                                , flags);
-    }
-    else if (nr == index++)
-    {
-        // x steps
-        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("X steps/mm"));
-            flags |= MENU_STATUSLINE;
-        }
-        lcd_lib_draw_string_leftP(17, PSTR("X"));
-        float_to_string(axis_steps_per_unit[X_AXIS], buffer, NULL);
-        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*2
-                                , 17
-                                , LCD_CHAR_SPACING*7
-                                , LCD_CHAR_HEIGHT
-                                , buffer
-                                , ALIGN_RIGHT | ALIGN_VCENTER
-                                , flags);
-    }
-    else if (nr == index++)
-    {
-        // y steps
-        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("Y steps/mm"));
-            flags |= MENU_STATUSLINE;
-        }
-        lcd_lib_draw_string_leftP(28, PSTR("Y"));
-        float_to_string(axis_steps_per_unit[Y_AXIS], buffer, NULL);
-        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*2
-                                , 28
-                                , LCD_CHAR_SPACING*7
-                                , LCD_CHAR_HEIGHT
-                                , buffer
-                                , ALIGN_RIGHT | ALIGN_VCENTER
-                                , flags);
-    }
-    else if (nr == index++)
-    {
-        // z steps
-        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("Z steps/mm"));
-            flags |= MENU_STATUSLINE;
-        }
-        lcd_lib_draw_string_leftP(39, PSTR("Z"));
-        float_to_string(axis_steps_per_unit[Z_AXIS], buffer, NULL);
-        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*2
-                                , 39
-                                , LCD_CHAR_SPACING*7
-                                , LCD_CHAR_HEIGHT
-                                , buffer
-                                , ALIGN_RIGHT | ALIGN_VCENTER
-                                , flags);
-    }
-    else if (nr == index++)
-    {
-        // e steps
-        #if EXTRUDERS > 1
-        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("Extruder 1 steps/mm"));
-            flags |= MENU_STATUSLINE;
-        }
-        lcd_lib_draw_stringP(LCD_GFX_WIDTH - LCD_CHAR_MARGIN_RIGHT - (LCD_CHAR_SPACING*10), 18, PSTR("E1"));
-        #else
-        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("Extruder steps/mm"));
-            flags |= MENU_STATUSLINE;
-        }
-        lcd_lib_draw_stringP(LCD_GFX_WIDTH - LCD_CHAR_MARGIN_RIGHT - (LCD_CHAR_SPACING*10), 17, PSTR("E"));
-        #endif
-
-        float_to_string(axis_steps_per_unit[E_AXIS], buffer, NULL);
-        LCDMenu::drawMenuString(LCD_GFX_WIDTH - LCD_CHAR_MARGIN_RIGHT - (LCD_CHAR_SPACING*7)
-                                , 17
-                                , LCD_CHAR_SPACING*7
-                                , LCD_CHAR_HEIGHT
-                                , buffer
-                                , ALIGN_RIGHT | ALIGN_VCENTER
-                                , flags);
-    }
-    #if EXTRUDERS > 1
-    else if (nr == index++)
-    {
-        // e2 steps
-        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
-        {
-            lcd_lib_draw_string_leftP(5, PSTR("Extruder 2 steps/mm"));
-            flags |= MENU_STATUSLINE;
-        }
-        lcd_lib_draw_stringP(LCD_GFX_WIDTH - LCD_CHAR_MARGIN_RIGHT - (LCD_CHAR_SPACING*10), 28, PSTR("E2"));
-        float_to_string(e2_steps_per_unit, buffer, NULL);
-        LCDMenu::drawMenuString(LCD_GFX_WIDTH - LCD_CHAR_MARGIN_RIGHT - (LCD_CHAR_SPACING*7)
-                                , 28
-                                , LCD_CHAR_SPACING*7
-                                , LCD_CHAR_HEIGHT
-                                , buffer
-                                , ALIGN_RIGHT | ALIGN_VCENTER
-                                , flags);
-    }
-    #endif
-}
-
-static void lcd_menu_steps()
-{
-    lcd_basic_screen();
-    lcd_lib_draw_hline(3, 124, 13);
-
-    menu.process_submenu(get_steps_menuoption, 5+EXTRUDERS);
-
-    uint8_t flags = 0;
-    for (uint8_t index=0; index<(5+EXTRUDERS); ++index) {
-        menu.drawSubMenu(drawStepsSubmenu, index, flags);
-    }
-    if (!(flags & MENU_STATUSLINE))
-    {
-        lcd_lib_draw_string_leftP(5, PSTR("Axis steps/mm"));
-    }
-
-    lcd_lib_update_screen();
 }
 
 #endif//ENABLE_ULTILCD2

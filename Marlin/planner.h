@@ -104,12 +104,8 @@ extern unsigned long axis_steps_per_sqr_second[NUM_AXIS];
     extern float autotemp_factor;
 #endif
 
-#if EXTRUDERS > 1
-  extern float e2_steps_per_unit;
-  #define GET_E_STEPS (active_extruder ? e2_steps_per_unit : axis_steps_per_unit[E_AXIS])
-#else
-  #define GET_E_STEPS axis_steps_per_unit[E_AXIS]
-#endif
+
+
 
 extern block_t block_buffer[BLOCK_BUFFER_SIZE];            // A ring buffer for motion instfructions
 extern volatile unsigned char block_buffer_head;           // Index of the next block to be pushed
