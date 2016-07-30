@@ -2276,6 +2276,10 @@ void process_command(const char *strCmd)
         disable_e2();
         while(card.pause){
           idle();
+          if (printing_state == PRINT_STATE_ABORT)
+          {
+            abortPrint();
+          }
         }
 
         plan_set_e_position(current_position[E_AXIS]);
