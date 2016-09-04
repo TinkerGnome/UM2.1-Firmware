@@ -130,7 +130,10 @@ void lcd_update()
         }
         dsp_temperature_bed = (ALPHA * current_temperature_bed) + (ONE_MINUS_ALPHA * dsp_temperature_bed);
         currentMenu();
-        if (postMenuCheck) postMenuCheck();
+        if (postMenuCheck && (printing_state != PRINT_STATE_ABORT))
+        {
+           postMenuCheck();
+        }
     }
 }
 

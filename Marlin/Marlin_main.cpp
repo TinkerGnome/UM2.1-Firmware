@@ -232,12 +232,12 @@ static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 
 static char cmdbuffer[BUFSIZE][MAX_CMD_SIZE];
 static bool fromsd[BUFSIZE];
-static int bufindr = 0;
-static int bufindw = 0;
-static int buflen = 0;
+static uint8_t bufindr = 0;
+static uint8_t bufindw = 0;
+static uint8_t buflen = 0;
 //static int i = 0;
 static char serial_char;
-static int serial_count = 0;
+static uint8_t serial_count = 0;
 static boolean comment_mode = false;
 static char *strchr_pointer = 0;  // just a pointer to find chars in the cmd string like X, Y, Z, E, etc
 static const char *current_command = 0; // just a pointer to the current command
@@ -304,8 +304,8 @@ void clear_command_queue()
 {
     if (buflen > 0)
     {
-        bufindw = (bufindr + 1)%BUFSIZE;
-        buflen = 1;
+        bufindw = bufindr;
+        buflen = 0;
     }
 }
 
@@ -519,7 +519,7 @@ void loop()
   {
     abortPrint();
   }
-  if(buflen < (BUFSIZE-1))
+  if(buflen < BUFSIZE)
   {
     get_command();
   }
@@ -689,7 +689,7 @@ static void get_command()
     }
   }
   #ifdef SDSUPPORT
-  if(!card.sdprinting)
+  if(!card.sdprinting || (printing_state == PRINT_STATE_ABORT))
     return;
   if (serial_count!=0)
   {
@@ -699,7 +699,6 @@ static void get_command()
   }
   if (card.pause)
   {
-
     return;
   }
   static uint32_t endOfLineFilePosition = 0;
@@ -1104,7 +1103,9 @@ void process_command(const char *strCmd)
       if (printing_state == PRINT_STATE_HOMING)
         break;
 
-      printing_state = PRINT_STATE_HOMING;
+      if (printing_state != PRINT_STATE_ABORT)
+        printing_state = PRINT_STATE_HOMING;
+
       saved_feedrate = feedrate;
       saved_feedmultiply = feedmultiply;
       feedmultiply = 100;
@@ -1112,9 +1113,7 @@ void process_command(const char *strCmd)
 
       enable_endstops(true);
 
-      for(int8_t i=0; i < NUM_AXIS; i++) {
-        destination[i] = current_position[i];
-      }
+      memcpy(destination, current_position, sizeof(destination));
       feedrate = 0.0;
 
 #ifdef DELTA
@@ -1324,11 +1323,13 @@ void process_command(const char *strCmd)
     case 0: // M0 - Unconditional stop - Wait for user button press on LCD
     case 1: // M1 - Conditional stop - Wait for user button press on LCD
     {
+        float epos = current_position[E_AXIS];
         card.pause = true;
         while(card.pause)
         {
           idle();
         }
+        plan_set_e_position(epos);
     }
     break;
 #endif
@@ -2237,8 +2238,12 @@ void process_command(const char *strCmd)
         memcpy(target, current_position, sizeof(target));
         memcpy(lastpos, current_position, sizeof(lastpos));
 
-        target[E_AXIS] -= retract_length/volume_to_filament_length[active_extruder];
+        //retract
+        //Set the recover length to whatever distance we retracted so we recover properly.
+        retract_recover_length[active_extruder] = retract_length/volume_to_filament_length[active_extruder];
+        target[E_AXIS] -= retract_recover_length[active_extruder];
         plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], retract_feedrate/60, active_extruder);
+        SET_EXTRUDER_RETRACT(active_extruder);
 
         //lift Z
         if(code_seen('Z'))
@@ -2258,44 +2263,62 @@ void process_command(const char *strCmd)
         }
         plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], homing_feedrate[X_AXIS]/60, active_extruder);
 
-        if(code_seen('L'))
+        // additional retract
+        float addRetractLength = 0.0f;
+        bool bAddRetract = code_seen('L');
+        if(bAddRetract)
         {
-          target[E_AXIS] -= code_value()/volume_to_filament_length[active_extruder];
+          addRetractLength = code_value()/volume_to_filament_length[active_extruder];
+          retract_recover_length[active_extruder] += addRetractLength;
+          target[E_AXIS] -= addRetractLength;
         }
         plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], retract_feedrate/60, active_extruder);
 
-        for (uint8_t i=0; i<NUM_AXIS; ++i)
-        {
-            current_position[i] = target[i];
-        }
+        memcpy(current_position, target, sizeof(current_position));
+        memcpy(destination, current_position, sizeof(destination));
+
         //finish moves
         st_synchronize();
         //disable extruder steppers so filament can be removed
         disable_e0();
         disable_e1();
         disable_e2();
-        while(card.pause){
+        while(card.pause)
+        {
           idle();
           if (printing_state == PRINT_STATE_ABORT)
           {
-            abortPrint();
+            break;
           }
         }
 
-        plan_set_e_position(current_position[E_AXIS]);
-        //return to normal
-        if(code_seen('L'))
+        st_synchronize();
+        plan_set_e_position(target[E_AXIS]);
+
+        //Only move to the last position if we are still printing. Else we aborted.
+        if ((printing_state != PRINT_STATE_ABORT) && (card.sdprinting))
         {
-          target[E_AXIS] += code_value()/volume_to_filament_length[active_extruder];
-        }
-        plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], retract_feedrate/60, active_extruder); //Move back the L feed.
-        if (card.sdprinting)    //Only move to the last position if we are still printing. Else we aborted.
-        {
-            plan_buffer_line(lastpos[X_AXIS], lastpos[Y_AXIS], target[Z_AXIS], target[E_AXIS], homing_feedrate[X_AXIS]/60, active_extruder); //move xy back
-            plan_buffer_line(lastpos[X_AXIS], lastpos[Y_AXIS], lastpos[Z_AXIS], target[E_AXIS], homing_feedrate[Z_AXIS]/60, active_extruder); //move z back
-            plan_buffer_line(lastpos[X_AXIS], lastpos[Y_AXIS], lastpos[Z_AXIS], lastpos[E_AXIS], retract_feedrate/60, active_extruder); //final untretract
+            //return to normal
+            if(bAddRetract)
+            {
+                // revert the additional retract
+                target[E_AXIS] += addRetractLength;
+                plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], retract_feedrate/60, active_extruder); //Move back the L feed.
+            }
 
             memcpy(current_position, lastpos, sizeof(current_position));
+            memcpy(destination, current_position, sizeof(destination));
+
+            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], target[Z_AXIS], target[E_AXIS], homing_feedrate[X_AXIS]/60, active_extruder); //move xy back
+            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], target[E_AXIS], homing_feedrate[Z_AXIS]/60, active_extruder); //move z back
+
+            //final unretract
+            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], retract_feedrate/60, active_extruder);
+            CLEAR_EXTRUDER_RETRACT(active_extruder);
+        }
+        else
+        {
+            memcpy(current_position, target, sizeof(current_position));
             memcpy(destination, current_position, sizeof(destination));
         }
     }

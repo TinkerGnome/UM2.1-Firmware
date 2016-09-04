@@ -131,12 +131,12 @@ void lcd_question_screen(menuFunc_t optionAMenu, menuFunc_t callbackOnA, const c
     {
         if (IS_SELECTED_MAIN(0))
         {
-            if (optionAMenu) lcd_change_to_menu(optionAMenu);
             if (callbackOnA) callbackOnA();
+            if (optionAMenu) lcd_change_to_menu(optionAMenu);
         }else if (IS_SELECTED_MAIN(1))
         {
-            if (optionBMenu) lcd_change_to_menu(optionBMenu);
             if (callbackOnB) callbackOnB();
+            if (optionBMenu) lcd_change_to_menu(optionBMenu);
         }
     }
 

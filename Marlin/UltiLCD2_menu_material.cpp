@@ -259,12 +259,9 @@ static void lcd_menu_insert_material_preheat()
     int16_t target = degTargetHotend(active_extruder) - 20 - 10;
 #endif
     if (temp < 0) temp = 0;
-    if (temp > target && !is_command_queued())
+    if (temp > target && (card.pause || !commands_queued()))
     {
         set_extrude_min_temp(0);
-        for(uint8_t e=0; e<EXTRUDERS; e++)
-            volume_to_filament_length[e] = 1.0;//Set the extrusion to 1mm per given value, so we can move the filament a set distance.
-
         currentMenu = lcd_menu_change_material_insert_wait_user;
         temp = target;
     }
@@ -357,12 +354,24 @@ static void lcd_menu_change_material_insert_forward()
 
 static void materialInsertReady()
 {
-    plan_set_e_position(0);
+    // retract material
+    quickStop();
+    current_position[E_AXIS] = 0.0f;
+    plan_set_e_position(current_position[E_AXIS]);
+    if (EXTRUDER_RETRACTED(menu_extruder))
+    {
+        current_position[E_AXIS] -= retract_recover_length[menu_extruder];
+    }
+    else
+    {
 #if EXTRUDERS > 1
-    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], -toolchange_retractlen[menu_extruder] / volume_to_filament_length[menu_extruder], 25*60, menu_extruder);
+        current_position[E_AXIS] -= toolchange_retractlen[menu_extruder] / volume_to_filament_length[menu_extruder];
 #else
-    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], -END_OF_PRINT_RETRACTION / volume_to_filament_length[active_extruder], 25*60, active_extruder);
+        current_position[E_AXIS] -= END_OF_PRINT_RETRACTION / volume_to_filament_length[menu_extruder];
 #endif
+    }
+    plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], retract_feedrate/60, menu_extruder);
+
     cancelMaterialInsert();
 }
 

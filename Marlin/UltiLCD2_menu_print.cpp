@@ -221,17 +221,29 @@ static void doStartPrint()
             // wait for nozzle heatup
             reheatNozzle(active_extruder);
 
-            // execute prime and wipe script
-            cmdBuffer.processWipe();
+            if (IS_WIPE_ENABLED)
+            {
+                // execute prime and wipe script
+                cmdBuffer.processWipe();
+            }
 
 			printing_state = old_printstate;
         }
+        if (!IS_WIPE_ENABLED)
+        {
+            // undo the end-of-print retraction
+            plan_set_e_position(current_position[E_AXIS] - (toolchange_retractlen[e] / volume_to_filament_length[e]));
+            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], END_OF_PRINT_RECOVERY_SPEED, e);
+            // perform additional priming
+            plan_set_e_position(current_position[E_AXIS]-PRIMING_MM3);
+            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], (PRIMING_MM3_PER_SEC * volume_to_filament_length[e]), e);
+        }
     #else
         // undo the end-of-print retraction
-        plan_set_e_position((0.0 - END_OF_PRINT_RETRACTION) / volume_to_filament_length[e]);
+        plan_set_e_position(current_position[E_AXIS] - (END_OF_PRINT_RETRACTION / volume_to_filament_length[e]));
         plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], END_OF_PRINT_RECOVERY_SPEED, e);
         // perform additional priming
-        plan_set_e_position(-PRIMING_MM3);
+        plan_set_e_position(current_position[E_AXIS]-PRIMING_MM3);
         plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], (PRIMING_MM3_PER_SEC * volume_to_filament_length[e]), e);
     #endif
 
@@ -854,6 +866,7 @@ static void lcd_menu_doabort()
 static void set_abort_state()
 {
     printing_state = PRINT_STATE_ABORT;
+    postMenuCheck = NULL;
 }
 
 static void lcd_menu_print_abort()
