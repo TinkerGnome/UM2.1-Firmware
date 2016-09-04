@@ -555,6 +555,8 @@ void lcd_menu_print_select()
                         {
                             volume_to_filament_length[e] = 1.0 / (M_PI * (material[e].diameter / 2.0) * (material[e].diameter / 2.0));
                             extrudemultiply[e] = material[e].flow;
+                            retract_feedrate = material[e].retraction_speed[nozzleSizeToTemperatureIndex(LCD_DETAIL_CACHE_NOZZLE_DIAMETER(e))];
+                            retract_length = material[e].retraction_length[nozzleSizeToTemperatureIndex(LCD_DETAIL_CACHE_NOZZLE_DIAMETER(e))];
                             target_temperature[e] = 0;
 
                             if (LCD_DETAIL_CACHE_MATERIAL(e) < 1)
@@ -719,9 +721,14 @@ static void lcd_menu_print_printing()
                 lcd_change_to_menu(lcd_menu_print_tune);
         }
     }
+    else if (pauseRequested)
+    {
+        lcd_lib_clear();
+        lcd_lib_draw_string_centerP(20, PSTR("Pausing..."));
+    }
     else
     {
-        lcd_question_screen(lcd_menu_print_tune, NULL, PSTR("TUNE"), lcd_menu_print_printing, lcd_menu_print_pause, PSTR("PAUSE"));
+        lcd_question_screen(lcd_menu_print_tune, NULL, PSTR("TUNE"), NULL, lcd_menu_print_pause, PSTR("PAUSE"));
         uint8_t progress = card.getFilePos() / ((card.getFileSize() + 123) / 124);
 #if EXTRUDERS > 1
         char buffer[20];
@@ -1175,16 +1182,11 @@ static void lcd_retraction_details(uint8_t nr)
         float_to_string(retract_length, buffer, PSTR("mm"));
     else if(nr == 2)
         int_to_string(retract_feedrate / 60 + 0.5, buffer, PSTR("mm/sec"));
-//#if EXTRUDERS > 1
-//    else if(nr == 3)
-//        float_to_string(extruder_swap_retract_length, buffer, PSTR("mm"));
-//#endif
     lcd_lib_draw_string(5, 53, buffer);
 }
 
 static void lcd_menu_print_tune_retraction()
 {
-//    lcd_scroll_menu(PSTR("RETRACTION"), 3 + (EXTRUDERS > 1 ? 1 : 0), lcd_retraction_item, lcd_retraction_details);
     lcd_scroll_menu(PSTR("RETRACTION"), 3, lcd_retraction_item, lcd_retraction_details);
     if (lcd_lib_button_pressed)
     {
@@ -1194,10 +1196,6 @@ static void lcd_menu_print_tune_retraction()
             LCD_EDIT_SETTING_FLOAT001(retract_length, "Retract length", "mm", 0, 50);
         else if (IS_SELECTED_SCROLL(2))
             LCD_EDIT_SETTING_SPEED(retract_feedrate, "Retract speed", "mm/sec", 0, max_feedrate[E_AXIS] * 60);
-//#if EXTRUDERS > 1
-//        else if (IS_SELECTED_SCROLL(3))
-//            LCD_EDIT_SETTING_FLOAT001(extruder_swap_retract_length, "Extruder change", "mm", 0, 50);
-//#endif
     }
 }
 
@@ -1205,7 +1203,7 @@ static void lcd_menu_print_pause()
 {
     if (card.sdprinting && !card.pause)
     {
-        if (movesplanned() > 0 && commands_queued() < BUFSIZE)
+        if (movesplanned() && (commands_queued() < BUFSIZE))
         {
             pauseRequested = false;
             card.pause = true;

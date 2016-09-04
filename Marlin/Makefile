@@ -214,14 +214,22 @@ SRC = wiring.c \
 CXXSRC = UltiLCD2.cpp UltiLCD2_gfx.cpp UltiLCD2_hi_lib.cpp UltiLCD2_low_lib.cpp \
 	UltiLCD2_menu_first_run.cpp UltiLCD2_menu_maintenance.cpp UltiLCD2_menu_material.cpp \
 	UltiLCD2_menu_print.cpp lifetime_stats.cpp
+<<<<<<< HEAD
 CXXSRC += machinesettings.cpp new.cpp
 CXXSRC += commandbuffer.cpp ConfigurationDual.cpp UltiLCD2_menu_dual.cpp \
 	UltiLCD2_menu_utils.cpp
+=======
+>>>>>>> UM2.1_JarJar
 CXXSRC += WMath.cpp WString.cpp Print.cpp Marlin_main.cpp	\
 	MarlinSerial.cpp Sd2Card.cpp SdBaseFile.cpp SdFatUtil.cpp	\
 	SdFile.cpp SdVolume.cpp motion_control.cpp planner.cpp		\
 	stepper.cpp temperature.cpp cardreader.cpp ConfigurationStore.cpp \
+<<<<<<< HEAD
 	watchdog.cpp electronics_test.cpp	
+=======
+	watchdog.cpp electronics_test.cpp
+CXXSRC += LiquidCrystal.cpp ultralcd.cpp SPI.cpp Servo.cpp Tone.cpp
+>>>>>>> UM2.1_JarJar
 
 #Check for Arduino 1.0.0 or higher and use the correct sourcefiles for that version
 ifeq ($(shell [ $(ARDUINO_VERSION) -ge 100 ] && echo true), true)
@@ -400,7 +408,7 @@ extcoff: $(TARGET).elf
 	# Link: create ELF output file from library.
 $(BUILD_DIR)/$(TARGET).elf: $(OBJ) Configuration.h
 	$(Pecho) "  CXX   $@"
-	$P $(CC) $(ALL_CXXFLAGS) -Wl,--gc-sections -o $@ -L. $(OBJ) $(LDFLAGS)
+	$P $(CC) $(ALL_CXXFLAGS) -Wl,--gc-sections  -Wl,-Map=$(BUILD_DIR)/$(TARGET).map -o $@ -L. $(OBJ) $(LDFLAGS)
 
 $(BUILD_DIR)/%.o: %.c Configuration.h Configuration_adv.h $(MAKEFILE)
 	$(Pecho) "  CC    $<"
