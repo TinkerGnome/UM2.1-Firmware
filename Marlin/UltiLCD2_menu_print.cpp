@@ -76,10 +76,29 @@ void abortPrint()
     if ((primed & ENDOFPRINT_RETRACT) && (primed & (EXTRUDER_PRIMED << active_extruder)))
     {
 #if EXTRUDERS > 1
-        // perform tool change retraction
-        CLEAR_EXTRUDER_RETRACT(active_extruder);
-        enquecommand_P(PSTR("G10 S1"));
-        enquecommand_P(PSTR("G92 E0"));
+        if (!TOOLCHANGE_RETRACTED(active_extruder))
+        {
+            // perform tool change retraction
+            float retractlen = toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
+            if (EXTRUDER_RETRACTED(active_extruder))
+            {
+		        retractlen -= retract_recover_length[active_extruder];
+		        if (retractlen < 0)
+                {
+                    retractlen = 0.0f;
+                }
+            }
+            // perform end-of-print retract
+            plan_set_e_position(retractlen);
+            current_position[E_AXIS] = 0.0f;
+            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], toolchange_retractfeedrate[active_extruder]/60, active_extruder);
+        }
+        else
+        {
+            // already retracted
+            current_position[E_AXIS] = 0.0f;
+            plan_set_e_position(current_position[E_AXIS]);
+        }
 #else
         char buffer[32];
         sprintf_P(buffer, PSTR("G92 E%i"), int(((float)END_OF_PRINT_RETRACTION) / volume_to_filament_length[active_extruder]));
@@ -122,6 +141,7 @@ void abortPrint()
     st_synchronize();
 
     enquecommand_P(PSTR("M84"));
+    stoptime = millis();
     lifetime_stats_print_end();
 
     //If we where paused, make sure we abort that pause. Else strange things happen: https://github.com/Ultimaker/Ultimaker2Marlin/issues/32
@@ -183,6 +203,8 @@ static void doStartPrint()
         // clear reheat flag
         retract_state &= ~(EXTRUDER_PREHEAT << e);
 #endif
+        SET_TOOLCHANGE_RETRACT(e);
+        retract_recover_length[e] = toolchange_retractlen[e] / volume_to_filament_length[e];
         if (!LCD_DETAIL_CACHE_MATERIAL(e))
         {
         	// don't prime the extruder if it isn't used in the (Ulti)gcode
@@ -270,7 +292,7 @@ static void doStartPrint()
     postMenuCheck = checkPrintFinished;
     card.startFileprint();
     lifetime_stats_print_start();
-    starttime = millis();
+    stoptime = starttime = millis();
 }
 
 static void cardUpdir()
@@ -625,7 +647,11 @@ static void lcd_menu_print_heatup()
                 break;
         }
 
-        if (current_temperature_bed >= target_temperature_bed - TEMP_WINDOW * 2 && !is_command_queued())
+#if TEMP_SENSOR_BED != 0
+        if (current_temperature_bed >= target_temperature_bed - TEMP_WINDOW * 2 && !is_command_queued() && !blocks_queued())
+#else
+        if (!is_command_queued() && !blocks_queued())
+#endif
         {
             bool ready = false;
             for(int8_t e=EXTRUDERS-1; e>=0; --e)
@@ -767,11 +793,13 @@ static void lcd_menu_print_printing()
         if (isinf(totalTimeSmoothSec))
             totalTimeSmoothSec = totalTimeMs;
 
-        if (LCD_DETAIL_CACHE_TIME() == 0 && printTimeSec < 60)
+        if (LCD_DETAIL_CACHE_TIME() == 0 && printTimeSec < 120)
         {
             totalTimeSmoothSec = totalTimeMs / 1000;
-            lcd_lib_draw_stringP(5, 10, PSTR("Time left unknown"));
-        }else{
+            // lcd_lib_draw_stringP(5, 10, PSTR("Time left unknown"));
+        }
+        else if (card.sdprinting)
+        {
             unsigned long totalTimeSec;
             if (printTimeSec < LCD_DETAIL_CACHE_TIME() / 2)
             {
@@ -784,12 +812,17 @@ static void lcd_menu_print_printing()
             }
             unsigned long timeLeftSec;
             if (printTimeSec > totalTimeSec)
+            {
                 timeLeftSec = 1;
+            }
             else
+            {
+                c = strcpy_P(buffer, PSTR("Time left "));
+                c += 10;
                 timeLeftSec = totalTimeSec - printTimeSec;
-            int_to_time_string(timeLeftSec, buffer);
-            lcd_lib_draw_stringP(5, 10, PSTR("Time left"));
-            lcd_lib_draw_string(65, 10, buffer);
+                int_to_time_min(timeLeftSec, c);
+                lcd_lib_draw_string_center(10, buffer);
+            }
         }
 
         lcd_progressbar(progress);
@@ -903,7 +936,26 @@ static void lcd_menu_print_ready()
         analogWrite(LED_PIN, (led_glow << 1) * int(led_brightness_level) / 100);
 #endif
     lcd_info_screen(lcd_menu_main, postPrintReady, PSTR("BACK TO MENU"));
-    //unsigned long printTimeSec = (stoptime-starttime)/1000;
+
+    char buffer[16] = {0};
+    unsigned long t=(stoptime-starttime)/1000;
+
+    if (t > 1)
+    {
+        char *c = buffer;
+        strcpy_P(c, PSTR("Time ")); c += 5;
+        c = int_to_time_min(t, c);
+        if (t < 60)
+        {
+                strcat_P(c, PSTR("min"));
+        }
+        else
+        {
+                strcat_P(c, PSTR("h"));
+        }
+        lcd_lib_draw_string_center(5, buffer);
+    }
+
     if (current_temperature[0] > 60 || current_temperature_bed > 40)
     {
         lcd_lib_draw_string_centerP(15, PSTR("Printer cooling down"));
@@ -918,7 +970,6 @@ static void lcd_menu_print_ready()
             minProgress = progress;
 
         lcd_progressbar(progress);
-        char buffer[16];
         char* c = buffer;
         for(uint8_t e=0; e<EXTRUDERS; e++)
             c = int_to_string(dsp_temperature[e], c, PSTR("C "));
@@ -944,7 +995,25 @@ static void lcd_menu_print_ready_cooled_down()
     lcd_info_screen(lcd_menu_main, postPrintReady, PSTR("BACK TO MENU"));
 
     LED_GLOW();
-    lcd_lib_draw_string_centerP(10, PSTR("Print finished"));
+    char buffer[16] = {0};
+    unsigned long t=(stoptime-starttime)/1000;
+
+    if (t > 1)
+    {
+        char *c = buffer;
+        strcpy_P(c, PSTR("Time ")); c += 5;
+        c = int_to_time_min(t, c);
+        if (t < 60)
+        {
+            strcat_P(c, PSTR("min"));
+        }
+        else
+        {
+            strcat_P(c, PSTR("h"));
+        }
+        lcd_lib_draw_string_center(5, buffer);
+    }
+    lcd_lib_draw_string_centerP(15, PSTR("Print finished"));
     lcd_lib_draw_string_centerP(30, PSTR("You can remove"));
     lcd_lib_draw_string_centerP(40, PSTR("the print."));
 

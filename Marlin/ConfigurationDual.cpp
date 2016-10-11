@@ -15,11 +15,11 @@
 // wrong data being written to the variables.
 #define STORE_DUAL_VERSION 3
 
-#define DOCK_X_POSITION    220.0
-#define DOCK_Y_POSITION     41.0
+#define DOCK_X_POSITION    223.5
+#define DOCK_Y_POSITION     34.5
 
-#define WIPE_X_POSITION    115.0
-#define WIPE_Y_POSITION     23.0
+#define WIPE_X_POSITION    105.0
+#define WIPE_Y_POSITION     18.0
 
 uint8_t dual_state = DUAL_ENABLED | DUAL_TOOLCHANGE | DUAL_WIPE;
 float add_homeing_z2;

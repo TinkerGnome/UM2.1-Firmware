@@ -142,29 +142,6 @@ uint8_t CommandBuffer::processScript(struct t_cmdline *script)
     return cmdCount;
 }
 
-//static char * toolchange_retract(char *buffer, uint8_t e)
-//{
-//    float length = toolchange_retractlen[e] / volume_to_filament_length[e];
-//#ifdef FWRETRACT
-//    if (EXTRUDER_RETRACTED(e) || TOOLCHANGE_RETRACTED(e))
-//    {
-//        length = max(0.0, length-retract_recover_length[e]);
-//        // retract_recover_length[e] += length;
-//        CLEAR_EXTRUDER_RETRACT(e);
-//        SET_TOOLCHANGE_RETRACT(e);
-//    }
-//    else
-//    {
-//        CLEAR_TOOLCHANGE_RETRACT(e);
-//        retract_recover_length[e] = 0.0f;
-//    }
-//#endif // FWRETRACT
-//    // dtostrf(-length, 4, 2, LCD_CACHE_FILENAME(3));
-//    float_to_string2(-length, LCD_CACHE_FILENAME(3), NULL);
-//    sprintf_P(buffer, PSTR("G1 E%s F%i"), LCD_CACHE_FILENAME(3), (int)toolchange_retractfeedrate[e]);
-//    return buffer;
-//}
-
 FORCE_INLINE void relative_e_move(const float eDiff, const float feedrate, uint8_t e)
 {
     current_position[E_AXIS] += eDiff;
@@ -173,18 +150,20 @@ FORCE_INLINE void relative_e_move(const float eDiff, const float feedrate, uint8
 
 static void toolchange_retract(uint8_t e)
 {
-    float length = toolchange_retractlen[e] / volume_to_filament_length[e];
-#ifdef FWRETRACT
-    if (EXTRUDER_RETRACTED(e) || TOOLCHANGE_RETRACTED(e))
+    if (!TOOLCHANGE_RETRACTED(e))
     {
-        length = max(0.0, length-retract_recover_length[e]);
-    // retract_recover_length[e] += length;
-    }
-    retract_recover_length[e] = toolchange_retractlen[e] / volume_to_filament_length[e];
-    CLEAR_EXTRUDER_RETRACT(e);
-    SET_TOOLCHANGE_RETRACT(e);
+        float length = toolchange_retractlen[e] / volume_to_filament_length[e];
+#ifdef FWRETRACT
+        if (EXTRUDER_RETRACTED(e))
+        {
+            length = max(0.0, length-retract_recover_length[e]);
+        }
+        retract_recover_length[e] = toolchange_retractlen[e] / volume_to_filament_length[e];
+        CLEAR_EXTRUDER_RETRACT(e);
+        SET_TOOLCHANGE_RETRACT(e);
 #endif // FWRETRACT
-    relative_e_move(-length, toolchange_retractfeedrate[e]/60, e);
+        relative_e_move(-length, toolchange_retractfeedrate[e]/60, e);
+    }
 }
 
 void CommandBuffer::processT0(bool bRetract, bool bWipe)
@@ -300,7 +279,7 @@ void CommandBuffer::processWipe()
     relative_e_move(length*-0.1, toolchange_retractfeedrate[active_extruder]/60, active_extruder);
 #ifdef FWRETRACT
     retract_recover_length[active_extruder] = 0.5*length;
-    SET_TOOLCHANGE_RETRACT(active_extruder);
+    SET_EXTRUDER_RETRACT(active_extruder);
 #endif // FWRETRACT
 }
 #endif // EXTRUDERS

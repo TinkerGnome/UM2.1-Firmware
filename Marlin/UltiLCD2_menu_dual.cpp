@@ -837,9 +837,6 @@ void switch_extruder(uint8_t newExtruder, bool moveZ)
             st_synchronize();
         }
         changeExtruder(newExtruder, moveZ);
-        SERIAL_ECHO_START;
-        SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
-        SERIAL_PROTOCOLLN((int)active_extruder);
     }
 }
 

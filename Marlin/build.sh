@@ -8,7 +8,7 @@
 #############################
 
 ##Which version name are we appending to the final archive
-export BUILD_NAME=16.10.1
+export BUILD_NAME=16.10.2
 
 #############################
 # Actual build script
@@ -62,3 +62,13 @@ $MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_V
 #cd -
 sleep 2
 cp _Mark2Dual/Marlin.hex firmware/Mark2-dual-${BUILD_NAME}.hex
+
+###
+
+$MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_VERSION=${ARDUINO_VERSION} BUILD_DIR=_Mark2DualFan clean
+sleep 2
+mkdir _Mark2DualFan
+$MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_VERSION=${ARDUINO_VERSION} BUILD_DIR=_Mark2DualFan DEFINES="'STRING_CONFIG_H_AUTHOR=\"Mark2_${BUILD_NAME}\"' TEMP_SENSOR_1=20 EXTRUDERS=2 BABYSTEPPING DUAL_FAN HEATER_0_MAXTEMP=275 HEATER_1_MAXTEMP=275 'EEPROM_VERSION=\"V12\"'"
+#cd -
+sleep 2
+cp _Mark2DualFan/Marlin.hex firmware/Mark2-dual-fan-${BUILD_NAME}.hex

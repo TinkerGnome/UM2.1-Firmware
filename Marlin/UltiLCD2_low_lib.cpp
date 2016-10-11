@@ -879,6 +879,37 @@ char* int_to_time_string(unsigned long i, char* temp_buffer)
     */
 }
 
+char* int_to_time_min(unsigned long i, char* temp_buffer)
+{
+    char* c = temp_buffer;
+    uint16_t hours = constrain(i / 60 / 60, 0, 999);
+    uint8_t mins = (i / 60) % 60;
+    uint8_t secs = i % 60;
+
+    if (!hours & !mins)
+    {
+        *c++ = '0';
+        *c++ = '0';
+        *c++ = ':';
+        *c++ = '0' + secs / 10;
+        *c++ = '0' + secs % 10;
+    }
+    else
+    {
+        if (hours > 99)
+            *c++ = '0' + hours / 100;
+        *c++ = '0' + (hours / 10) % 10;
+        *c++ = '0' + hours % 10;
+        *c++ = ':';
+        *c++ = '0' + mins / 10;
+        *c++ = '0' + mins % 10;
+//        *c++ = 'h';
+    }
+
+    *c = '\0';
+    return c;
+}
+
 char* float_to_string(float f, char* temp_buffer, const char* p_postfix)
 {
     int32_t i = f * 100.0 + 0.5;

@@ -1481,6 +1481,8 @@ void process_command(const char *strCmd)
       {
           setTargetHotend(code_value(), tmp_extruder);
           extruder_lastused[tmp_extruder] = millis();
+          // set reheat flag
+          retract_state |= (EXTRUDER_PREHEAT << tmp_extruder);
       }
       setWatch();
       break;
@@ -1495,8 +1497,6 @@ void process_command(const char *strCmd)
       if(setTargetedHotend(109)){
         break;
       }
-      printing_state = PRINT_STATE_HEATING;
-      LCD_MESSAGEPGM(MSG_HEATING);
       #ifdef AUTOTEMP
         autotemp_enabled=false;
       #endif
@@ -1504,6 +1504,8 @@ void process_command(const char *strCmd)
       {
         setTargetHotend(code_value(), tmp_extruder);
         extruder_lastused[tmp_extruder] = millis();
+        // set reheat flag
+        retract_state |= (EXTRUDER_PREHEAT << tmp_extruder);
       }
       #ifdef AUTOTEMP
         if (code_seen('S')) autotemp_min=code_value();
@@ -1515,11 +1517,20 @@ void process_command(const char *strCmd)
         }
       #endif
 
-      setWatch();
-      codenum = millis();
-
       /* See if we are heating up or cooling down */
       bool target_direction = isHeatingHotend(tmp_extruder); // true if heating, false if cooling
+
+      // don't wait to cool down after a tool change
+      if ((printing_state == PRINT_STATE_TOOLREADY) && IS_WIPE_ENABLED && (!target_direction || (degHotend(tmp_extruder) >= (degTargetHotend(tmp_extruder)-TEMP_WINDOW))))
+      {
+          break;
+      }
+
+      printing_state = PRINT_STATE_HEATING;
+      LCD_MESSAGEPGM(MSG_HEATING);
+
+      setWatch();
+      codenum = millis();
 
       #ifdef TEMP_RESIDENCY_TIME
         long residencyStart;
@@ -3234,7 +3245,9 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 		max_xy_jerk = oldjerk;
         acceleration = oldaccel;
 
-        destination[E_AXIS] = current_position[E_AXIS] = oldepos;
+//        destination[E_AXIS] = current_position[E_AXIS] = oldepos;
+//        plan_set_e_position(current_position[E_AXIS]);
+        current_position[E_AXIS] = oldepos;
         plan_set_e_position(current_position[E_AXIS]);
 
         if (printing_state < PRINT_STATE_ABORT)
@@ -3254,6 +3267,10 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         // Set the new active extruder and position
         active_extruder = nextExtruder;
 
+        SERIAL_ECHO_START;
+        SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
+        SERIAL_PROTOCOLLN((int)active_extruder);
+
 #ifdef FWRETRACT
         // clear reheat flag
         retract_state &= ~(EXTRUDER_PREHEAT << active_extruder);
@@ -3261,6 +3278,7 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
     }
     // restore position
+    memcpy(destination, current_position, sizeof(destination));
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
     return true;
 }
