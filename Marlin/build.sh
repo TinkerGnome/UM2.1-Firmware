@@ -36,8 +36,8 @@ if [ -d "C:/arduino-1.0.3" ]; then
 elif [ -d "/Applications/Arduino.app/Contents/Resources/Java" ]; then
 	ARDUINO_PATH=/Applications/Arduino.app/Contents/Resources/Java
 	ARDUINO_VERSION=105
-elif [ -d "C:/Arduino" ]; then
-	ARDUINO_PATH=C:/Arduino
+elif [ -d "D:/Arduino" ]; then
+	ARDUINO_PATH=D:/Arduino
 	ARDUINO_VERSION=165
 else
 	ARDUINO_PATH=/usr/share/arduino
