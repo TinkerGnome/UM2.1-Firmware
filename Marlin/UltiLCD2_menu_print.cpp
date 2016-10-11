@@ -76,10 +76,29 @@ void abortPrint()
     if ((primed & ENDOFPRINT_RETRACT) && (primed & (EXTRUDER_PRIMED << active_extruder)))
     {
 #if EXTRUDERS > 1
-        // perform tool change retraction
-        CLEAR_EXTRUDER_RETRACT(active_extruder);
-        enquecommand_P(PSTR("G10 S1"));
-        enquecommand_P(PSTR("G92 E0"));
+        if (!TOOLCHANGE_RETRACTED(active_extruder))
+        {
+            // perform tool change retraction
+            float retractlen = toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
+            if (EXTRUDER_RETRACTED(active_extruder))
+            {
+		        retractlen -= retract_recover_length[active_extruder];
+		        if (retractlen < 0)
+                {
+                    retractlen = 0.0f;
+                }
+            }
+            // perform end-of-print retract
+            plan_set_e_position(retractlen);
+            current_position[E_AXIS] = 0.0f;
+            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], toolchange_retractfeedrate[active_extruder]/60, active_extruder);
+        }
+        else
+        {
+            // already retracted
+            current_position[E_AXIS] = 0.0f;
+            plan_set_e_position(current_position[E_AXIS]);
+        }
 #else
         char buffer[32];
         sprintf_P(buffer, PSTR("G92 E%i"), int(((float)END_OF_PRINT_RETRACTION) / volume_to_filament_length[active_extruder]));

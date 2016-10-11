@@ -1495,8 +1495,6 @@ void process_command(const char *strCmd)
       if(setTargetedHotend(109)){
         break;
       }
-      printing_state = PRINT_STATE_HEATING;
-      LCD_MESSAGEPGM(MSG_HEATING);
       #ifdef AUTOTEMP
         autotemp_enabled=false;
       #endif
@@ -1515,11 +1513,20 @@ void process_command(const char *strCmd)
         }
       #endif
 
-      setWatch();
-      codenum = millis();
-
       /* See if we are heating up or cooling down */
       bool target_direction = isHeatingHotend(tmp_extruder); // true if heating, false if cooling
+
+      // don't wait to cool down after a tool change
+      if ((printing_state == PRINT_STATE_TOOLREADY) && IS_WIPE_ENABLED && !target_direction)
+      {
+          break;
+      }
+
+      printing_state = PRINT_STATE_HEATING;
+      LCD_MESSAGEPGM(MSG_HEATING);
+
+      setWatch();
+      codenum = millis();
 
       #ifdef TEMP_RESIDENCY_TIME
         long residencyStart;
