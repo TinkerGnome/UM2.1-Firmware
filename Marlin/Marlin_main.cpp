@@ -1052,7 +1052,7 @@ void process_command(const char *strCmd)
       break;
       #ifdef FWRETRACT
       case 10: // G10 retract
-      if(!EXTRUDER_RETRACTED(active_extruder))
+      if(!EXTRUDER_RETRACTED(active_extruder) && !TOOLCHANGE_RETRACTED(active_extruder))
       {
         float oldFeedrate = feedrate;
         float oldpos = current_position[E_AXIS];
@@ -3078,6 +3078,7 @@ static bool setTargetedHotend(uint16_t code)
 void reheatNozzle(uint8_t e)
 {
     unsigned long last_output = millis();
+    tmp_extruder = e;
 
     while ((printing_state < PRINT_STATE_ABORT) && ( current_temperature[e] < target_temperature[e] - TEMP_WINDOW ))
     {
@@ -3115,7 +3116,13 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         printing_state = PRINT_STATE_TOOLCHANGE;
         float old_feedrate = feedrate;
         float oldepos = current_position[E_AXIS];
+        float oldjerk = max_xy_jerk;
+        float oldaccel = acceleration;
 
+        max_xy_jerk  = 12;
+        acceleration = 2000;
+
+        memcpy(destination, current_position, sizeof(destination));
 
         // reset xy offsets
         for(uint8_t i = 0; i < 2; ++i)
@@ -3150,16 +3157,18 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         if IS_TOOLCHANGE_ENABLED
         {
             // execute toolchange script
+            current_position[Z_AXIS] = destination[Z_AXIS];
             if (nextExtruder)
             {
-                cmdBuffer.processT1(moveZ);
+                cmdBuffer.processT1(moveZ, IS_WIPE_ENABLED);
             }
             else
             {
-                cmdBuffer.processT0(moveZ);
+                cmdBuffer.processT0(moveZ, IS_WIPE_ENABLED);
             }
             // finish tool change moves
-            st_synchronize();
+            // st_synchronize();
+            memcpy(destination, current_position, sizeof(destination));
         }
 
         // set new extruder xy offsets
@@ -3187,11 +3196,6 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
         if (moveZ && IS_WIPE_ENABLED)
         {
-            if IS_TOOLCHANGE_ENABLED
-            {
-                // move to offset position
-                plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], 120*60, active_extruder);
-            }
             // move to heatup pos
             CommandBuffer::move2heatup();
 
@@ -3227,7 +3231,11 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
         // restore settings
         feedrate = old_feedrate;
+		max_xy_jerk = oldjerk;
+        acceleration = oldaccel;
+
         destination[E_AXIS] = current_position[E_AXIS] = oldepos;
+        plan_set_e_position(current_position[E_AXIS]);
 
         if (printing_state < PRINT_STATE_ABORT)
         {
