@@ -1589,7 +1589,7 @@ void process_command(const char *strCmd)
         LCD_MESSAGEPGM(MSG_BED_HEATING);
         if (code_seen('S')) setTargetBed(code_value());
         codenum = millis();
-        while(current_temperature_bed < target_temperature_bed - TEMP_WINDOW)
+        while(current_temperature_bed < degTargetBed() - TEMP_WINDOW)
         {
           if(( millis() - codenum) > 1000 ) //Print Temp Reading every 1 second while heating up.
           {
@@ -3091,7 +3091,7 @@ void reheatNozzle(uint8_t e)
     unsigned long last_output = millis();
     tmp_extruder = e;
 
-    while ((printing_state < PRINT_STATE_ABORT) && ( current_temperature[e] < target_temperature[e] - TEMP_WINDOW ))
+    while ((printing_state < PRINT_STATE_ABORT) && ( current_temperature[e] < degTargetHotend(e) - TEMP_WINDOW ))
     {
     #if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_MAX6675)
       if( (millis() - last_output) > 1000UL )
@@ -3214,7 +3214,7 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
             else
             {
     #ifdef PREVENT_DANGEROUS_EXTRUDE
-                if (target_temperature[active_extruder] >= get_extrude_min_temp())
+                if (degTargetHotend(active_extruder) >= get_extrude_min_temp())
     #endif
                 {
                     // execute wipe script

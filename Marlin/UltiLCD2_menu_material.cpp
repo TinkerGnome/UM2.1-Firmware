@@ -36,7 +36,6 @@ static menuFunc_t post_change_material_menu;
 static unsigned long preheat_end_time;
 static uint8_t nozzle_select_index;
 
-void doCooldown();//TODO
 static void lcd_menu_material_main();
 static void lcd_menu_change_material_preheat();
 static void lcd_menu_change_material_remove();

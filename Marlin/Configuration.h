@@ -208,9 +208,9 @@
     //#define  DEFAULT_Kd 100.0
 
 // Ultimaker2 JarJar
-    #define  DEFAULT_Kp 10.03
-    #define  DEFAULT_Ki 1.50
-    #define  DEFAULT_Kd 70.0
+    #define  DEFAULT_Kp 12.00
+    #define  DEFAULT_Ki 0.75
+    #define  DEFAULT_Kd 55.0
 
 // Makergear
 //    #define  DEFAULT_Kp 7.0
@@ -624,7 +624,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 										// (Ultimaker 2 hot end capacity is approx 80 mm^3)
 #define PRIMING_MM3_PER_SEC 5			// Rate at which to prime head (in mm^3/s)
 										// (Ultimaker 2 upper limit is 8-10)
-#define PRIMING_HEIGHT 20				// Height at which to perform the priming extrusions
+#define PRIMING_HEIGHT 30				// Height at which to perform the priming extrusions
 
 #define HEATUP_POSITION_COMMAND "G1 F12000 X%u Y%u"
 

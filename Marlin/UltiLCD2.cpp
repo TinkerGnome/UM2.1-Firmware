@@ -226,9 +226,13 @@ static void lcd_menu_special_startup()
 
 void doCooldown()
 {
-    for(uint8_t n=0; n<EXTRUDERS; n++)
+    for(uint8_t n=0; n<EXTRUDERS; ++n)
+    {
         setTargetHotend(0, n);
+        target_temperature_diff[n] = 0;
+    }
     setTargetBed(0);
+    target_temperature_bed_diff=0;
     fanSpeed = 0;
     //quickStop();         //Abort all moves already in the planner
 }

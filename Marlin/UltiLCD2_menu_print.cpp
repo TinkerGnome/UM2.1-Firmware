@@ -18,6 +18,8 @@
 #include "UltiLCD2_menu_dual.h"
 #endif // EXTRUDERS
 
+// allowed tuning difference to the target temperature
+#define MAX_TEMP_DIFF  25
 
 uint8_t lcd_cache[LCD_CACHE_SIZE];
 #define LCD_CACHE_NR_OF_FILES() lcd_cache[(LCD_CACHE_COUNT*(LONG_FILENAME_LENGTH+2))]
@@ -30,7 +32,6 @@ uint8_t lcd_cache[LCD_CACHE_SIZE];
 #define LCD_DETAIL_CACHE_NOZZLE_DIAMETER(n) (*(float*)&lcd_cache[LCD_DETAIL_CACHE_START+5+4*EXTRUDERS+4*n])
 #define LCD_DETAIL_CACHE_MATERIAL_TYPE(n) ((char*)&lcd_cache[LCD_DETAIL_CACHE_START+5+8*EXTRUDERS+8*n])
 
-void doCooldown();//TODO
 static void lcd_menu_print_heatup();
 static void lcd_menu_print_printing();
 static void lcd_menu_print_error_sd();
@@ -561,8 +562,22 @@ void lcd_menu_print_select()
                     }
                     card.setIndex(0);
 
+                    //reset the settings to defaults
                     fanSpeed = 0;
+                    fanSpeedPercent = 100;
                     feedmultiply = 100;
+                    target_temperature_bed_diff = 0;
+                    axis_relative_state = 0;
+                    feedmultiply = 100;
+                    target_temperature_bed_diff = 0;
+
+                    for(uint8_t e=0; e<EXTRUDERS; e++)
+                    {
+                        volume_to_filament_length[e] = 1.0;
+                        extrudemultiply[e] = 100;
+                        target_temperature_diff[e] = 0;
+                    }
+
                     if (strcmp_P(buffer, PSTR(";FLAVOR:UltiGCode")) == 0)
                     {
                         //New style GCode flavor without start/end code.
@@ -580,6 +595,7 @@ void lcd_menu_print_select()
                             retract_feedrate = material[e].retraction_speed[nozzleSizeToTemperatureIndex(LCD_DETAIL_CACHE_NOZZLE_DIAMETER(e))];
                             retract_length = material[e].retraction_length[nozzleSizeToTemperatureIndex(LCD_DETAIL_CACHE_NOZZLE_DIAMETER(e))];
                             target_temperature[e] = 0;
+                            target_temperature_diff[e] = 0;
 
                             if (LCD_DETAIL_CACHE_MATERIAL(e) < 1)
                                 continue;
@@ -602,17 +618,10 @@ void lcd_menu_print_select()
 #if EXTRUDERS < 2
                         CommandBuffer::move2heatup();
 #endif
+                        printing_state = PRINT_STATE_NORMAL;
+
                     }else{
                         //Classic gcode file
-
-                        //Set the settings to defaults so the classic GCode has full control
-                        fanSpeedPercent = 100;
-                        for(uint8_t e=0; e<EXTRUDERS; e++)
-                        {
-                            volume_to_filament_length[e] = 1.0;
-                            extrudemultiply[e] = 100;
-                        }
-
                         lcd_change_to_menu(lcd_menu_print_classic_warning, MAIN_MENU_ITEM_POS(0));
                     }
                 }
@@ -633,7 +642,7 @@ static void lcd_menu_print_heatup()
     lcd_question_screen(lcd_menu_print_tune, NULL, PSTR("TUNE"), lcd_menu_print_abort, NULL, PSTR("ABORT"));
 
 #if TEMP_SENSOR_BED != 0
-    if (current_temperature_bed > target_temperature_bed - TEMP_WINDOW)
+    if (current_temperature_bed > degTargetBed() - TEMP_WINDOW)
     {
 #endif
         for(int8_t e=EXTRUDERS-1; e>=0; --e)
@@ -648,7 +657,7 @@ static void lcd_menu_print_heatup()
         }
 
 #if TEMP_SENSOR_BED != 0
-        if (current_temperature_bed >= target_temperature_bed - TEMP_WINDOW * 2 && !is_command_queued() && !blocks_queued())
+        if (current_temperature_bed >= degTargetBed() - TEMP_WINDOW * 2 && !is_command_queued() && !blocks_queued())
 #else
         if (!is_command_queued() && !blocks_queued())
 #endif
@@ -656,7 +665,7 @@ static void lcd_menu_print_heatup()
             bool ready = false;
             for(int8_t e=EXTRUDERS-1; e>=0; --e)
             {
-                if ((target_temperature[e] > 0) && (current_temperature[e] >= target_temperature[e] - TEMP_WINDOW))
+                if ((target_temperature[e] > 0) && (current_temperature[e] >= degTargetHotend(e) - TEMP_WINDOW))
                 {
                     ready = true;
                     // set target temperature for other used nozzles
@@ -694,14 +703,14 @@ static void lcd_menu_print_heatup()
         if (LCD_DETAIL_CACHE_MATERIAL(e) < 1 || target_temperature[e] < 1)
             continue;
         if (current_temperature[e] > 20)
-            progress = min(progress, (current_temperature[e] - 20) * 125 / (target_temperature[e] - 20 - TEMP_WINDOW));
+            progress = min(progress, (current_temperature[e] - 20) * 125 / (degTargetHotend(e) - 20 - TEMP_WINDOW));
         else
             progress = 0;
     }
 #if TEMP_SENSOR_BED != 0
     if (current_temperature_bed > 20)
-        progress = min(progress, (current_temperature_bed - 20) * 125 / (target_temperature_bed - 20 - TEMP_WINDOW));
-    else if (target_temperature_bed > current_temperature_bed - 20)
+        progress = min(progress, (current_temperature_bed - 20) * 125 / (degTargetBed() - 20 - TEMP_WINDOW));
+    else if (degTargetBed() > current_temperature_bed - 20)
         progress = 0;
 #endif
 
@@ -771,9 +780,9 @@ static void lcd_menu_print_printing()
         case PRINT_STATE_HEATING:
             lcd_lib_draw_string_centerP(20, PSTR("Heating"));
 #if EXTRUDERS > 1
-            int_to_string(int(target_temperature[1]), int_to_string(int(dsp_temperature[1]), int_to_string(int(target_temperature[0]), int_to_string(int(dsp_temperature[0]), buffer, PSTR("C/")), PSTR("C ")), PSTR("C/")), PSTR("C"));
+            int_to_string(int(degTargetHotend(1)), int_to_string(int(dsp_temperature[1]), int_to_string(int(degTargetHotend(0)), int_to_string(int(dsp_temperature[0]), buffer, PSTR("C/")), PSTR("C ")), PSTR("C/")), PSTR("C"));
 #else
-            int_to_string(int(target_temperature[0]), int_to_string(int(dsp_temperature[0]), buffer, PSTR("C/")), PSTR("C"));
+            int_to_string(int(degTargetHotend(0)), int_to_string(int(dsp_temperature[0]), buffer, PSTR("C/")), PSTR("C"));
 #endif // EXTRUDERS
             lcd_lib_draw_string_center(30, buffer);
             break;
@@ -781,7 +790,7 @@ static void lcd_menu_print_printing()
             lcd_lib_draw_string_centerP(20, PSTR("Heating buildplate"));
             c = int_to_string(dsp_temperature_bed, buffer, PSTR("C"));
             *c++ = '/';
-            c = int_to_string(target_temperature_bed, c, PSTR("C"));
+            c = int_to_string(degTargetBed(), c, PSTR("C"));
             lcd_lib_draw_string_center(30, buffer);
             break;
         }
@@ -1077,14 +1086,14 @@ static void tune_item_details_callback(uint8_t nr)
     {
         c = int_to_string(dsp_temperature[0], c, PSTR("C"));
         *c++ = '/';
-        c = int_to_string(target_temperature[0], c, PSTR("C"));
+        c = int_to_string(int(degTargetHotend(0)), c, PSTR("C"));
     }
 #if EXTRUDERS > 1
     else if (nr == 4)
     {
         c = int_to_string(dsp_temperature[1], c, PSTR("C"));
         *c++ = '/';
-        c = int_to_string(target_temperature[1], c, PSTR("C"));
+        c = int_to_string(int(degTargetHotend(1)), c, PSTR("C"));
     }
 #endif
 #if TEMP_SENSOR_BED != 0
@@ -1092,7 +1101,7 @@ static void tune_item_details_callback(uint8_t nr)
     {
         c = int_to_string(dsp_temperature_bed, c, PSTR("C"));
         *c++ = '/';
-        c = int_to_string(target_temperature_bed, c, PSTR("C"));
+        c = int_to_string(degTargetBed(), c, PSTR("C"));
     }
 #endif
     else if (nr == 3 + BED_MENU_OFFSET + EXTRUDERS)
@@ -1116,54 +1125,80 @@ static void tune_item_details_callback(uint8_t nr)
     lcd_lib_draw_string(5, 53, card.longFilename);
 }
 
-void lcd_menu_print_tune_heatup_nozzle0()
+static void lcd_menu_print_tune_heatup_nozzle(uint8_t e, int16_t max_temp)
 {
     if (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM != 0)
     {
-        target_temperature[0] = int(target_temperature[0]) + (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM);
-        if (target_temperature[0] < 0)
-            target_temperature[0] = 0;
-        if (target_temperature[0] > HEATER_0_MAXTEMP - 15)
-            target_temperature[0] = HEATER_0_MAXTEMP - 15;
+        target_temperature_diff[e] = constrain(target_temperature_diff[e] + (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM),
+                                               max(-MAX_TEMP_DIFF, -target_temperature[e]),
+                                               min(MAX_TEMP_DIFF, max_temp - target_temperature[e] - 15));
         lcd_lib_encoder_pos = 0;
     }
     if (lcd_lib_button_pressed)
         lcd_change_to_menu(previousMenu, previousEncoderPos);
 
     lcd_lib_clear();
+    char buffer[24];
+#if EXTRUDERS > 1
+    lcd_lib_draw_string_centerP(10, PSTR("Temperature"));
+    strcpy_P(buffer, PSTR("Nozzle "));
+    int_to_string(e+1, buffer+7, 0);
+    lcd_lib_draw_string_center(20, buffer);
+#else
     lcd_lib_draw_string_centerP(20, PSTR("Nozzle temperature:"));
+#endif
     lcd_lib_draw_string_centerP(53, PSTR("Click to return"));
-    char buffer[16];
-    int_to_string(int(dsp_temperature[0]), buffer, PSTR("C/"));
-    int_to_string(int(target_temperature[0]), buffer+strlen(buffer), PSTR("C"));
+    char * c = int_to_string(int(dsp_temperature[e]), buffer, PSTR("C/"));
+    c = int_to_string(int(degTargetHotend(e)), c, PSTR("C"));
+    if (target_temperature_diff[e])
+    {
+        // append relative difference
+        int_to_string(target_temperature_diff[e], c, PSTR(")"), PSTR(" ("), true);
+    }
     lcd_lib_draw_string_center(30, buffer);
     lcd_lib_update_screen();
 }
+
+#if TEMP_SENSOR_BED != 0
+static void lcd_menu_print_tune_heatup_bed()
+{
+    if (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM != 0)
+    {
+        target_temperature_bed_diff = constrain(target_temperature_bed_diff + (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM),
+                                                max(-MAX_TEMP_DIFF, -target_temperature_bed),
+                                                min(MAX_TEMP_DIFF, BED_MAXTEMP - target_temperature_bed - 15));
+        lcd_lib_encoder_pos = 0;
+    }
+    if (lcd_lib_button_pressed)
+        lcd_change_to_menu(previousMenu, previousEncoderPos);
+
+    lcd_lib_clear();
+    char buffer[24];
+    lcd_lib_draw_string_centerP(10, PSTR("Temperature"));
+    lcd_lib_draw_string_centerP(20, PSTR("Buildplate"));
+    lcd_lib_draw_string_centerP(53, PSTR("Click to return"));
+    char * c = int_to_string(int(dsp_temperature_bed), buffer, PSTR("C/"));
+    c = int_to_string(int(degTargetBed()), c, PSTR("C"));
+    if (target_temperature_bed_diff)
+    {
+        // append relative difference
+        int_to_string(target_temperature_bed_diff, c, PSTR(")"), PSTR(" ("), true);
+    }
+    lcd_lib_draw_string_center(30, buffer);
+    lcd_lib_update_screen();
+}
+#endif // TEMP_SENSOR_BED
+
+static void lcd_menu_print_tune_heatup_nozzle0()
+{
+    lcd_menu_print_tune_heatup_nozzle(0, HEATER_0_MAXTEMP);
+}
+
 #if EXTRUDERS > 1
 void lcd_menu_print_tune_heatup_nozzle1()
 {
-    if (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM != 0)
-    {
-        target_temperature[1] = int(target_temperature[1]) + (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM);
-        if (target_temperature[1] < 0)
-            target_temperature[1] = 0;
-        if (target_temperature[1] > HEATER_0_MAXTEMP - 15)
-            target_temperature[1] = HEATER_0_MAXTEMP - 15;
-        lcd_lib_encoder_pos = 0;
-    }
-    if (lcd_lib_button_pressed)
-        lcd_change_to_menu(previousMenu, previousEncoderPos);
-
-    lcd_lib_clear();
-    lcd_lib_draw_string_centerP(20, PSTR("Nozzle2 temperature:"));
-    lcd_lib_draw_string_centerP(53, PSTR("Click to return"));
-    char buffer[16];
-    int_to_string(int(dsp_temperature[1]), buffer, PSTR("C/"));
-    int_to_string(int(target_temperature[1]), buffer+strlen(buffer), PSTR("C"));
-    lcd_lib_draw_string_center(30, buffer);
-    lcd_lib_update_screen();
+    lcd_menu_print_tune_heatup_nozzle(1, HEATER_1_MAXTEMP);
 }
-
 #endif
 
 
@@ -1191,7 +1226,7 @@ static void lcd_menu_print_tune()
 #endif
 #if TEMP_SENSOR_BED != 0
         else if (IS_SELECTED_SCROLL(3 + EXTRUDERS))
-            lcd_change_to_menu(lcd_menu_maintenance_advanced_bed_heatup, 0);//Use the maintainace heatup menu, which shows the current temperature.
+            lcd_change_to_menu(lcd_menu_print_tune_heatup_bed, 0);
 #endif
         else if (IS_SELECTED_SCROLL(3 + BED_MENU_OFFSET + EXTRUDERS))
             LCD_EDIT_SETTING_BYTE_PERCENT(fanSpeed, "Fan speed", "%", 0, 100);

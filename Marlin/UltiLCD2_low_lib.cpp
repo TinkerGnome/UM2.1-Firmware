@@ -802,13 +802,22 @@ void lcd_lib_buttons_update()
     lcd_lib_encoder_pos_interrupt = 0;
 }
 
-char* int_to_string(int i, char* temp_buffer, const char* p_postfix)
+char* int_to_string(int i, char* temp_buffer, const char* p_postfix, const char* p_prefix, bool forceSign)
 {
     char* c = temp_buffer;
+    if (p_prefix)
+    {
+        strcpy_P(c, p_prefix);
+        c += strlen_P(p_prefix);
+    }
     if (i < 0)
     {
         *c++ = '-';
         i = -i;
+    }
+    else if (forceSign && i > 0)
+    {
+        *c++ = '+';
     }
     if (i >= 10000)
         *c++ = ((i/10000)%10)+'0';

@@ -42,7 +42,7 @@ extern bool lcd_lib_button_pressed;
 extern bool lcd_lib_button_down;
 extern unsigned long last_user_interaction;
 
-char* int_to_string(int i, char* temp_buffer, const char* p_postfix = NULL);
+char* int_to_string(int i, char* temp_buffer, const char* p_postfix = NULL, const char* p_prefix = NULL, bool forceSign = false);
 char* int_to_time_string(unsigned long i, char* temp_buffer);
 char* int_to_time_min(unsigned long i, char* temp_buffer);
 char* float_to_string(float f, char* temp_buffer, const char* p_postfix = NULL);

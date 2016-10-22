@@ -243,7 +243,7 @@ void CommandBuffer::processWipe()
     relative_e_move(length*0.8, toolchange_retractfeedrate[active_extruder]/60, active_extruder);
 
     // prime nozzle
-    relative_e_move((length*0.2)+toolchange_prime[active_extruder]/volume_to_filament_length[active_extruder], 0.7f, active_extruder);
+    relative_e_move((length*0.2)+toolchange_prime[active_extruder]/volume_to_filament_length[active_extruder], (PRIMING_MM3_PER_SEC * volume_to_filament_length[active_extruder]), active_extruder);
 
     // retract before wipe
     length = toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
