@@ -3151,9 +3151,12 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         #undef MIN_TOOLCHANGE_ZHOP
         #undef MAX_TOOLCHANGE_ZHOP
 
-        if (moveZ && IS_WIPE_ENABLED)
+        if (moveZ)
         {
-            current_position[Z_AXIS] -= wipeOffset;
+            if (IS_WIPE_ENABLED)
+            {
+                current_position[Z_AXIS] -= wipeOffset;
+            }
             // lower buildplate if necessary
             if (zoffset < 0.0f)
             {
@@ -3200,7 +3203,7 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
         plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 
-        if (moveZ && IS_WIPE_ENABLED)
+        if (moveZ)
         {
             // move to heatup pos
             CommandBuffer::move2heatup();
@@ -3212,27 +3215,29 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
                 CommandBuffer::move2SafeYPos();
             }
             else
-            {
+			{
+				
+				
+				if (IS_WIPE_ENABLED)
+				{
     #ifdef PREVENT_DANGEROUS_EXTRUDE
-                if (degTargetHotend(active_extruder) >= get_extrude_min_temp())
+					if (degTargetHotend(active_extruder) >= get_extrude_min_temp())
     #endif
-                {
-                    // execute wipe script
-                    cmdBuffer.processWipe();
-                }
-
-                // finish wipe moves
-                st_synchronize();
-
-                // reset wipe offset
-                current_position[Z_AXIS] += wipeOffset;
-                // raise buildplate if necessary
-                if (zoffset > 0.0f)
-                {
-                   current_position[Z_AXIS] += zoffset;
-                }
-
-            }
+					{
+						// execute wipe script
+						cmdBuffer.processWipe();
+					}
+					// finish wipe moves
+					st_synchronize();
+					// reset wipe offset
+					current_position[Z_AXIS] += wipeOffset;
+				}
+				// raise buildplate if necessary
+				if (zoffset > 0.0f)
+				{
+				   current_position[Z_AXIS] += zoffset;
+				}
+			}
         }
 
         // restore settings
