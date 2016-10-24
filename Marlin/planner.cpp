@@ -477,10 +477,17 @@ void check_axes_activity()
     disable_e1();
     disable_e2();
   }
+
+  // limit fan speed during nozzle priming
+  if (printing_state == PRINT_STATE_PRIMING)
+  {
+    tail_fan_speed = min(PRIMING_MAX_FAN, tail_fan_speed);
+  }
+
 #if defined(FAN_PIN) && FAN_PIN > -1
   #ifdef FAN_KICKSTART_TIME
     static unsigned long fan_kick_end;
-    if (tail_fan_speed) {
+    if (tail_fan_speed > FAN_KICKSTART_MINPWM) {
       if (fan_kick_end == 0) {
         // Just starting up fan - run at full power.
         fan_kick_end = millis() + FAN_KICKSTART_TIME;
@@ -495,7 +502,7 @@ void check_axes_activity()
 #ifdef FAN_SOFT_PWM
   fanSpeedSoftPwm = tail_fan_speed;
 #else
-  analogWrite(FAN_PIN,tail_fan_speed);
+  analogWrite(FAN_PIN, tail_fan_speed);
  #ifdef DUAL_FAN
   analogWrite(LED_PIN, (active_extruder>0) ? tail_fan_speed : 0);
  #endif

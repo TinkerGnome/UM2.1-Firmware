@@ -1058,7 +1058,7 @@ void process_command(const char *strCmd)
         float oldpos = current_position[E_AXIS];
         memcpy(destination, current_position, sizeof(destination));
         #if EXTRUDERS > 1
-        if (code_seen('S') && code_value_long() == 1)
+        if (!IS_DUAL_ENABLED && code_seen('S') && code_value_long() == 1)
         {
             destination[E_AXIS]-=toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
             feedrate=toolchange_retractfeedrate[active_extruder];
@@ -3216,8 +3216,6 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
             }
             else
 			{
-				
-				
 				if (IS_WIPE_ENABLED)
 				{
     #ifdef PREVENT_DANGEROUS_EXTRUDE
