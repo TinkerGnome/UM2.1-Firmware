@@ -135,7 +135,7 @@ private:
 
 extern LCDMenu menu;
 
-
+bool lcd_tune_value(int8_t &value, int8_t _min, int8_t _max);
 bool lcd_tune_value(float &value, float _min, float _max, float _step);
 
 #endif

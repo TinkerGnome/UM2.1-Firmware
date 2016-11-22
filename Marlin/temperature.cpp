@@ -441,7 +441,7 @@ void manage_heater()
   unsigned long m = millis();
   extruder_lastused[active_extruder] = m;
 
-  for(int8_t e = 0; e < EXTRUDERS; ++e)
+  for(uint8_t e = 0; e < EXTRUDERS; ++e)
   {
     target_temp = target_temperature[e] > 0 ? degTargetHotend(e) : 0;
     if ((printing_state != PRINT_STATE_HEATING) && !(retract_state & (EXTRUDER_PREHEAT << e)) && (IS_SD_PRINTING || (m - lastSerialCommandTime < SERIAL_CONTROL_TIMEOUT)))

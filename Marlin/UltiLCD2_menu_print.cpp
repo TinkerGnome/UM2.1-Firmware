@@ -23,7 +23,6 @@
 
 uint8_t lcd_cache[LCD_CACHE_SIZE];
 #define LCD_CACHE_NR_OF_FILES() lcd_cache[(LCD_CACHE_COUNT*(LONG_FILENAME_LENGTH+2))]
-#define LCD_CACHE_ID(n) lcd_cache[(n)]
 #define LCD_CACHE_TYPE(n) lcd_cache[LCD_CACHE_COUNT + (n)]
 #define LCD_DETAIL_CACHE_START ((LCD_CACHE_COUNT*(LONG_FILENAME_LENGTH+2))+1)
 #define LCD_DETAIL_CACHE_ID() lcd_cache[LCD_DETAIL_CACHE_START]
@@ -627,7 +626,12 @@ void lcd_menu_print_select()
 #if EXTRUDERS < 2
                         CommandBuffer::move2heatup();
 #endif
-                        printing_state = PRINT_STATE_NORMAL;
+#if TEMP_SENSOR_BED != 0
+                            if (target_temperature_bed > 0)
+                                printing_state = PRINT_STATE_HEATING_BED;
+                            else
+#endif
+                                printing_state = PRINT_STATE_HEATING;
 
                     }else{
                         //Classic gcode file
@@ -654,6 +658,7 @@ static void lcd_menu_print_heatup()
     if (current_temperature_bed > degTargetBed() - TEMP_WINDOW)
     {
 #endif
+        printing_state = PRINT_STATE_HEATING;
         for(int8_t e=EXTRUDERS-1; e>=0; --e)
         {
             if (LCD_DETAIL_CACHE_MATERIAL(e) < 1)
@@ -1262,7 +1267,10 @@ static void lcd_menu_print_tune()
             lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1));
         }
         else if (IS_SELECTED_SCROLL(7 + BED_MENU_OFFSET + EXTRUDERS * 2))
+        {
+            lcd_init_extruderoffset();
             lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
+        }
 #endif
         else if (IS_SELECTED_SCROLL(2 + BED_MENU_OFFSET + EXTRUDERS * 5))
             LCD_EDIT_SETTING(led_brightness_level, "Brightness", "%", 0, 100);

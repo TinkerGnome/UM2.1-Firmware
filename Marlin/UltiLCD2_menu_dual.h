@@ -12,6 +12,8 @@ void lcd_menu_dual();
 void lcd_select_nozzle(menuFunc_t nextMenu, menuFunc_t callbackOnSelect, menuFunc_t callbackOnAbort);
 void switch_extruder(uint8_t newExtruder, bool moveZ);
 void lcd_menu_tune_tcretract();
+void lcd_init_extruderoffset();
+void lcd_calc_extruderoffset();
 void lcd_menu_extruderoffset();
 #endif // EXTRUDERS
 
