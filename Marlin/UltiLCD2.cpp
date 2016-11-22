@@ -130,7 +130,10 @@ void lcd_update()
         }
         dsp_temperature_bed = (ALPHA * current_temperature_bed) + (ONE_MINUS_ALPHA * dsp_temperature_bed);
         currentMenu();
-        if (postMenuCheck) postMenuCheck();
+        if (postMenuCheck && (printing_state != PRINT_STATE_ABORT))
+        {
+           postMenuCheck();
+        }
     }
 }
 
@@ -223,9 +226,13 @@ static void lcd_menu_special_startup()
 
 void doCooldown()
 {
-    for(uint8_t n=0; n<EXTRUDERS; n++)
+    for(uint8_t n=0; n<EXTRUDERS; ++n)
+    {
         setTargetHotend(0, n);
+        target_temperature_diff[n] = 0;
+    }
     setTargetBed(0);
+    target_temperature_bed_diff=0;
     fanSpeed = 0;
     //quickStop();         //Abort all moves already in the planner
 }

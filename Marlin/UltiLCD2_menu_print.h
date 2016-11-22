@@ -7,6 +7,7 @@
 #define LCD_DETAIL_CACHE_SIZE (5+8*EXTRUDERS+8*EXTRUDERS)
 #define LCD_CACHE_SIZE (1 + (2 + LONG_FILENAME_LENGTH) * LCD_CACHE_COUNT + LCD_DETAIL_CACHE_SIZE)
 extern uint8_t lcd_cache[LCD_CACHE_SIZE];
+#define LCD_CACHE_ID(n) lcd_cache[(n)]
 #define LCD_CACHE_FILENAME(n) ((char*)&lcd_cache[2*LCD_CACHE_COUNT + (n) * LONG_FILENAME_LENGTH])
 
 extern uint8_t primed;

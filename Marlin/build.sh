@@ -8,7 +8,7 @@
 #############################
 
 ##Which version name are we appending to the final archive
-export BUILD_NAME=16.04.2
+export BUILD_NAME=16.10.4
 
 #############################
 # Actual build script
@@ -36,8 +36,8 @@ if [ -d "C:/arduino-1.0.3" ]; then
 elif [ -d "/Applications/Arduino.app/Contents/Resources/Java" ]; then
 	ARDUINO_PATH=/Applications/Arduino.app/Contents/Resources/Java
 	ARDUINO_VERSION=105
-elif [ -d "C:/Arduino" ]; then
-	ARDUINO_PATH=C:/Arduino
+elif [ -d "D:/Arduino" ]; then
+	ARDUINO_PATH=D:/Arduino
 	ARDUINO_VERSION=165
 else
 	ARDUINO_PATH=/usr/share/arduino
@@ -62,3 +62,14 @@ $MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_V
 #cd -
 sleep 2
 cp _Mark2DualExtended/Marlin.hex firmware/Mark2-dual-ext-${BUILD_NAME}.hex
+
+###
+
+$MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_VERSION=${ARDUINO_VERSION} BUILD_DIR=_Mark2DualFanExtended clean
+sleep 2
+mkdir _Mark2DualFanExtended
+$MAKE -j 3 HARDWARE_MOTHERBOARD=72 ARDUINO_INSTALL_DIR=${ARDUINO_PATH} ARDUINO_VERSION=${ARDUINO_VERSION} BUILD_DIR=_Mark2DualFanExtended DEFINES="'STRING_CONFIG_H_AUTHOR=\"Mark2_${BUILD_NAME}\"' TEMP_SENSOR_1=20 EXTRUDERS=2 BABYSTEPPING DUAL_FAN HEATER_0_MAXTEMP=275 HEATER_1_MAXTEMP=275 'EEPROM_VERSION=\"V12\"'"
+#cd -
+sleep 2
+cp _Mark2DualFanExtended/Marlin.hex firmware/Mark2-dual-fan-ext-${BUILD_NAME}.hex
+

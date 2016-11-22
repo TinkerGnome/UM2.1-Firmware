@@ -166,7 +166,7 @@
 #define HEATER_0_MAXTEMP 275
 #define HEATER_1_MAXTEMP 275
 #define HEATER_2_MAXTEMP 275
-#define BED_MAXTEMP 115
+#define BED_MAXTEMP 130
 
 //Check if the heater heats up MAX_HEATING_TEMPERATURE_INCREASE within MAX_HEATING_CHECK_MILLIS while the PID was at the maximum.
 // If not, raise an error because most likely the heater is not heating up the temperature sensor. Indicating an issue in the system.
@@ -208,9 +208,9 @@
     //#define  DEFAULT_Kd 100.0
 
 // Ultimaker2 JarJar
-    #define  DEFAULT_Kp 10.03
-    #define  DEFAULT_Ki 1.50
-    #define  DEFAULT_Kd 70.0
+    #define  DEFAULT_Kp 12.00
+    #define  DEFAULT_Ki 0.75
+    #define  DEFAULT_Kd 55.0
 
 // Makergear
 //    #define  DEFAULT_Kp 7.0
@@ -363,7 +363,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define X_MIN_POS 0
 #endif
 #ifndef Y_MAX_POS
-#define Y_MAX_POS 230
+#define Y_MAX_POS 225
 #endif
 #ifndef Y_MIN_POS
 #define Y_MIN_POS 0
@@ -376,7 +376,7 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #endif
 // safe y-position for dual head mode
 #ifndef DUAL_Y_MIN_POS
-#define DUAL_Y_MIN_POS 65
+#define DUAL_Y_MIN_POS 55
 #endif
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
@@ -622,9 +622,10 @@ const bool Z_ENDSTOPS_INVERTING = true; // set to true to invert the logic of th
 #define END_OF_PRINT_RECOVERY_SPEED 5 	// speed to recover that assumed retraction at (mm/s)
 #define PRIMING_MM3	50					// number of mm^3 of plastic to extrude when priming
 										// (Ultimaker 2 hot end capacity is approx 80 mm^3)
-#define PRIMING_MM3_PER_SEC 5			// Rate at which to prime head (in mm^3/s)
+#define PRIMING_MM3_PER_SEC 4			// Rate at which to prime head (in mm^3/s)
 										// (Ultimaker 2 upper limit is 8-10)
-#define PRIMING_HEIGHT 20				// Height at which to perform the priming extrusions
+#define PRIMING_HEIGHT 30				// Height at which to perform the priming extrusions
+#define PRIMING_MAX_FAN 50              // maximum fan speed (0-255) during priming
 
 #define HEATUP_POSITION_COMMAND "G1 F12000 X%u Y%u"
 

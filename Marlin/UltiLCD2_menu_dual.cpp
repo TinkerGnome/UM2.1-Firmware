@@ -9,6 +9,7 @@
 #include "commandbuffer.h"
 #include "UltiLCD2_hi_lib.h"
 #include "UltiLCD2_menu_maintenance.h"
+#include "UltiLCD2_menu_print.h"
 #include "UltiLCD2_menu_dual.h"
 
 uint8_t menu_extruder = 0;
@@ -33,8 +34,15 @@ static void lcd_store_wipeposition()
     lcd_change_to_previous_menu();
 }
 
+static void lcd_return_extruderoffset()
+{
+    lcd_calc_extruderoffset();
+    lcd_change_to_previous_menu();
+}
+
 static void lcd_store_extruderoffset()
 {
+    lcd_calc_extruderoffset();
     Dual_StoreExtruderOffset();
     Dual_StoreAddHomeingZ2();
     lcd_change_to_previous_menu();
@@ -58,6 +66,24 @@ static void lcd_extruderoffset_y()
     lcd_tune_value(extruder_offset[Y_AXIS][1], -99.99f, 99.99f, 0.01f);
 }
 
+static void lcd_extruderruler_x()
+{
+    int8_t index = (int8_t)LCD_CACHE_ID(X_AXIS);
+    if (lcd_tune_value(index, -20, 20))
+    {
+        LCD_CACHE_ID(X_AXIS) = (uint8_t)index;
+    }
+}
+
+static void lcd_extruderruler_y()
+{
+    int8_t index = (int8_t)LCD_CACHE_ID(Y_AXIS);
+    if (lcd_tune_value(index, -20, 20))
+    {
+        LCD_CACHE_ID(Y_AXIS) = (uint8_t)index;
+    }
+}
+
 static void lcd_extruderoffset_z()
 {
     float zoffset = add_homeing[Z_AXIS] - add_homeing_z2;
@@ -79,17 +105,27 @@ static const menu_t & get_extruderoffset_menuoption(uint8_t nr, menu_t &opt)
     else if (nr == index++)
     {
         // RETURN
-        opt.setData(MENU_NORMAL, lcd_change_to_previous_menu);
+        opt.setData(MENU_NORMAL, lcd_return_extruderoffset);
     }
     else if (nr == index++)
     {
         // x offset
         opt.setData(MENU_INPLACE_EDIT, lcd_extruderoffset_x, 8);
     }
+    else if ((printing_state == PRINT_STATE_NORMAL) && !(card.sdprinting || commands_queued() || movesplanned()) && nr == index++)
+    {
+        // x calibration line
+        opt.setData(MENU_INPLACE_EDIT, lcd_extruderruler_x, 8);
+    }
     else if (nr == index++)
     {
         // y offset
         opt.setData(MENU_INPLACE_EDIT, lcd_extruderoffset_y, 8);
+    }
+    else if ((printing_state == PRINT_STATE_NORMAL) && !(card.sdprinting || commands_queued() || movesplanned()) && nr == index++)
+    {
+        // y calibration line
+        opt.setData(MENU_INPLACE_EDIT, lcd_extruderruler_y, 8);
     }
     else if (nr == index++)
     {
@@ -149,10 +185,27 @@ static void drawExtruderOffsetSubmenu(uint8_t nr, uint8_t &flags)
             flags |= MENU_STATUSLINE;
         }
         lcd_lib_draw_string_leftP(17, PSTR("X"));
-        float_to_string(extruder_offset[X_AXIS][1], buffer, PSTR("mm"));
+        float_to_string(extruder_offset[X_AXIS][1]+((int8_t)LCD_CACHE_ID(X_AXIS)*0.04), buffer, PSTR("mm"));
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
                                 , 17
                                 , LCD_CHAR_SPACING*8
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if ((printing_state == PRINT_STATE_NORMAL) && !(card.sdprinting || commands_queued() || movesplanned()) && nr == index++)
+    {
+        // x offset ruler
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("X offset line no."));
+            flags |= MENU_STATUSLINE;
+        }
+        int_to_string((int8_t)LCD_CACHE_ID(X_AXIS), buffer, PSTR(">"), PSTR("<"), true);
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*13
+                                , 17
+                                , LCD_CHAR_SPACING*5
                                 , LCD_CHAR_HEIGHT
                                 , buffer
                                 , ALIGN_RIGHT | ALIGN_VCENTER
@@ -167,10 +220,27 @@ static void drawExtruderOffsetSubmenu(uint8_t nr, uint8_t &flags)
             flags |= MENU_STATUSLINE;
         }
         lcd_lib_draw_string_leftP(28, PSTR("Y"));
-        float_to_string(extruder_offset[Y_AXIS][1], buffer, PSTR("mm"));
+        float_to_string(extruder_offset[Y_AXIS][1]+((int8_t)LCD_CACHE_ID(Y_AXIS)*0.04f), buffer, PSTR("mm"));
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
                                 , 28
                                 , LCD_CHAR_SPACING*8
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if ((printing_state == PRINT_STATE_NORMAL) && !(card.sdprinting || commands_queued() || movesplanned()) && nr == index++)
+    {
+        // y offset ruler
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Y offset line no."));
+            flags |= MENU_STATUSLINE;
+        }
+        int_to_string((int8_t)LCD_CACHE_ID(Y_AXIS), buffer, PSTR(">"), PSTR("<"), true);
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*13
+                                , 28
+                                , LCD_CHAR_SPACING*5
                                 , LCD_CHAR_HEIGHT
                                 , buffer
                                 , ALIGN_RIGHT | ALIGN_VCENTER
@@ -196,15 +266,31 @@ static void drawExtruderOffsetSubmenu(uint8_t nr, uint8_t &flags)
     }
 }
 
+void lcd_init_extruderoffset()
+{
+    LCD_CACHE_ID(X_AXIS) = 0;
+    LCD_CACHE_ID(Y_AXIS) = 0;
+}
+
+void lcd_calc_extruderoffset()
+{
+    extruder_offset[X_AXIS][1] += ((int8_t)LCD_CACHE_ID(X_AXIS)*0.04);
+    extruder_offset[Y_AXIS][1] += ((int8_t)LCD_CACHE_ID(Y_AXIS)*0.04);
+    LCD_CACHE_ID(X_AXIS) = 0;
+    LCD_CACHE_ID(Y_AXIS) = 0;
+}
+
 void lcd_menu_extruderoffset()
 {
     lcd_basic_screen();
     lcd_lib_draw_hline(3, 124, 13);
 
-    menu.process_submenu(get_extruderoffset_menuoption, 5);
+    uint8_t len = (card.sdprinting || commands_queued() || movesplanned() || (printing_state != PRINT_STATE_NORMAL) ? 5 : 7);
+
+    menu.process_submenu(get_extruderoffset_menuoption, len);
 
     uint8_t flags = 0;
-    for (uint8_t index=0; index<5; ++index) {
+    for (uint8_t index=0; index<len; ++index) {
         menu.drawSubMenu(drawExtruderOffsetSubmenu, index, flags);
     }
     if (!(flags & MENU_STATUSLINE))
@@ -522,17 +608,17 @@ static const menu_t & get_tcretract_menuoption(uint8_t nr, menu_t &opt)
     }
     else if (nr == index++)
     {
-        // nozzle 1 retract len
+        // retract len
         opt.setData(MENU_INPLACE_EDIT, lcd_tune_tcretractlen, 2);
     }
     else if (nr == index++)
     {
-        // nozzle 1 retract feedrate
+        // retract feedrate
         opt.setData(MENU_INPLACE_EDIT, lcd_tune_tcretractfeed, 2);
     }
     else if (nr == index++)
     {
-        // nozzle 2 retract len
+        // extra priming len
         opt.setData(MENU_INPLACE_EDIT, lcd_tune_tcprime, 2);
     }
     return opt;
@@ -837,9 +923,6 @@ void switch_extruder(uint8_t newExtruder, bool moveZ)
             st_synchronize();
         }
         changeExtruder(newExtruder, moveZ);
-        SERIAL_ECHO_START;
-        SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
-        SERIAL_PROTOCOLLN((int)active_extruder);
     }
 }
 
@@ -935,8 +1018,6 @@ static void lcd_simple_buildplate_store()
     {
         add_homeing_z2 -= current_position[Z_AXIS];
         Dual_StoreAddHomeingZ2();
-        // restore homing offset of the first extruder
-        Config_RetrieveSettings();
     }
     else
     {
@@ -1071,12 +1152,17 @@ static void lcd_prepare_buildplate_adjust()
 {
     Config_RetrieveSettings();
     // remove homing offset
-    add_homeing[Z_AXIS] = 0;
 #if (EXTRUDERS > 1)
     if (active_extruder)
     {
         add_homeing_z2 = 0;
     }
+    else
+    {
+        add_homeing[Z_AXIS] = 0;
+    }
+#else
+    add_homeing[Z_AXIS] = 0;
 #endif
     char buffer[32] = {0};
     // home axis first
@@ -1189,7 +1275,10 @@ void lcd_menu_dual()
         else if (IS_SELECTED_SCROLL(3))
             lcd_change_to_menu(lcd_menu_tcretraction, MAIN_MENU_ITEM_POS(menu_extruder));
         else if (IS_SELECTED_SCROLL(4))
+        {
+            lcd_init_extruderoffset();
             lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
+        }
         else if (IS_SELECTED_SCROLL(5))
             lcd_change_to_menu(lcd_menu_dockposition, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(6))
