@@ -462,14 +462,6 @@ void CardReader::checkautostart(bool force)
       return;
   }
 
-#if (EXTRUDERS > 1)
-  if(!force)
-  {
-    // load command scripts
-    cmdBuffer.initScripts();
-  }
-#endif
-
   char autoname[30];
   sprintf_P(autoname, PSTR("auto%i.g"), lastnr);
   for(int8_t i=0;i<(int8_t)strlen(autoname);i++)
