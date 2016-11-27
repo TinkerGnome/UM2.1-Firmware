@@ -1687,10 +1687,6 @@ void process_command(const char *strCmd)
         bool all_axis = !((code_seen(axis_codes[0])) || (code_seen(axis_codes[1])) || (code_seen(axis_codes[2]))|| (code_seen(axis_codes[3])));
         if(all_axis)
         {
-          st_synchronize();
-          disable_e0();
-          disable_e1();
-          disable_e2();
           finishAndDisableSteppers();
         }
         else

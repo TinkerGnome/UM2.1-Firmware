@@ -10,6 +10,7 @@ class CommandBuffer
     static void homeHead();
     static void homeBed();
     static void homeAll();
+    static void move2dock(bool bRetract);
     static void move2heatup();
     static void move2front();
     static void moveHead(float x, float y, int feedrate);

@@ -12,6 +12,14 @@
 #include "UltiLCD2_menu_print.h"
 #include "UltiLCD2_menu_dual.h"
 
+// Use the lcd_cache memory to store manual moving positions
+#define TARGET_POS(n)   (*(float*)&lcd_cache[(n) * sizeof(float)])
+#define TARGET_MIN(n)   (*(float*)&lcd_cache[(n) * sizeof(float)])
+#define TARGET_MAX(n)   (*(float*)&lcd_cache[sizeof(min_pos) + (n) * sizeof(float)])
+#define OLD_FEEDRATE    (*(float*)&lcd_cache[NUM_AXIS * sizeof(float)])
+#define OLD_ACCEL       (*(float*)&lcd_cache[(NUM_AXIS+1) * sizeof(float)])
+#define OLD_JERK        (*(float*)&lcd_cache[(NUM_AXIS+2) * sizeof(float)])
+
 uint8_t menu_extruder = 0;
 
 void lcd_menu_dual();
@@ -268,6 +276,7 @@ static void drawExtruderOffsetSubmenu(uint8_t nr, uint8_t &flags)
 
 void lcd_init_extruderoffset()
 {
+    // use the lcd cache for calibration line numbers
     LCD_CACHE_ID(X_AXIS) = 0;
     LCD_CACHE_ID(Y_AXIS) = 0;
 }
@@ -303,6 +312,207 @@ void lcd_menu_extruderoffset()
 
 //////////////////
 
+static void init_head_position()
+{
+    st_synchronize();
+    if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
+    {
+        // home head
+        CommandBuffer::homeHead();
+        cmd_synchronize();
+        st_synchronize();
+    }
+}
+
+static void lcd_dockmove_init()
+{
+    // save current variables
+    TARGET_POS(X_AXIS) = dock_position[X_AXIS];
+    TARGET_POS(Y_AXIS) = dock_position[Y_AXIS];
+    OLD_ACCEL = acceleration;
+    OLD_JERK = max_xy_jerk;
+    // home head if necessary
+    init_head_position();
+    // move to dock position
+    CommandBuffer::move2dock(false);
+    acceleration = 250;
+    max_xy_jerk = 5;
+}
+
+static void lcd_dockmove_quit()
+{
+    // reset variables
+    acceleration = OLD_ACCEL;
+    max_xy_jerk = OLD_JERK ;
+    // home head
+    CommandBuffer::move2SafeYPos();
+    CommandBuffer::moveHead(min_pos[X_AXIS], max_pos[Y_AXIS], 200);
+    enquecommand_P(PSTR("M84 X Y"));
+    lcd_change_to_previous_menu();
+}
+
+static void lcd_store_dockmove()
+{
+    dock_position[X_AXIS] = TARGET_POS(X_AXIS);
+    dock_position[Y_AXIS] = TARGET_POS(Y_AXIS);
+    Dual_StoreDockPosition();
+    lcd_dockmove_quit();
+}
+
+static void lcd_dockmove_x()
+{
+    if (!movesplanned())
+    {
+        lcd_tune_value(TARGET_POS(X_AXIS), 0.0f, max_pos[X_AXIS], 0.1f);
+        CommandBuffer::moveHead(TARGET_POS(X_AXIS), current_position[Y_AXIS], 10);
+    }
+}
+
+static void lcd_dockmove_y()
+{
+    if (!movesplanned())
+    {
+        lcd_tune_value(TARGET_POS(Y_AXIS), 0.0f, max_pos[Y_AXIS], 0.1f);
+        CommandBuffer::moveHead(current_position[X_AXIS], TARGET_POS(Y_AXIS), 10);
+    }
+}
+
+// create menu options for "dock position"
+static const menu_t & get_dockmove_menuoption(uint8_t nr, menu_t &opt)
+{
+    uint8_t index(0);
+    if (nr == index++)
+    {
+        // STORE
+        opt.setData(MENU_NORMAL, lcd_store_dockmove);
+    }
+    else if (nr == index++)
+    {
+        // RETURN
+        opt.setData(MENU_NORMAL, lcd_dockmove_quit);
+    }
+    else if (nr == index++)
+    {
+        // x pos
+        opt.setData(MENU_INPLACE_EDIT, lcd_dockmove_x, 2);
+    }
+    else if (nr == index++)
+    {
+        // y pos
+        opt.setData(MENU_INPLACE_EDIT, lcd_dockmove_y, 2);
+    }
+    return opt;
+}
+
+static void drawDockMoveSubmenu(uint8_t nr, uint8_t &flags)
+{
+    uint8_t index(0);
+    char buffer[32] = {0};
+    if (nr == index++)
+    {
+        // Store
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Store dock position"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("STORE")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // RETURN
+        LCDMenu::drawMenuBox(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                           , BOTTOM_MENU_YPOS
+                           , 52
+                           , LCD_CHAR_HEIGHT
+                           , flags);
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Abort function"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+                                , BOTTOM_MENU_YPOS
+                                , 52
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("CANCEL")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // x position
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("dock position x"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(20, PSTR("X"));
+        float_to_string(st_get_position(X_AXIS) / axis_steps_per_unit[X_AXIS], buffer, PSTR("mm"));
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
+                                , 20
+                                , LCD_CHAR_SPACING*8
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+    else if (nr == index++)
+    {
+        // y position
+        if ((flags & MENU_ACTIVE) | (flags & MENU_SELECTED))
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("dock position y"));
+            flags |= MENU_STATUSLINE;
+        }
+        lcd_lib_draw_string_leftP(32, PSTR("Y"));
+        float_to_string(st_get_position(Y_AXIS) / axis_steps_per_unit[Y_AXIS], buffer, PSTR("mm"));
+        LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
+                                , 32
+                                , LCD_CHAR_SPACING*8
+                                , LCD_CHAR_HEIGHT
+                                , buffer
+                                , ALIGN_RIGHT | ALIGN_VCENTER
+                                , flags);
+    }
+}
+
+static void lcd_menu_dockmove()
+{
+    lcd_basic_screen();
+    lcd_lib_draw_hline(3, 124, 13);
+
+    menu.process_submenu(get_dockmove_menuoption, 4);
+
+    uint8_t flags = 0;
+
+    if (printing_state == PRINT_STATE_HOMING)
+    {
+        lcd_lib_draw_string_centerP(25, PSTR("Preparing..."));
+    }
+    else
+    {
+        for (uint8_t index=0; index<4; ++index) {
+            menu.drawSubMenu(drawDockMoveSubmenu, index, flags);
+        }
+    }
+
+    if (!(flags & MENU_STATUSLINE))
+    {
+        lcd_lib_draw_string_leftP(5, PSTR("Docking position"));
+    }
+
+    lcd_lib_update_screen();
+}
+
+//////////////////
+
 static void lcd_dockposition_x()
 {
     lcd_tune_value(dock_position[X_AXIS], 0.0f, max_pos[X_AXIS], 0.1f);
@@ -313,7 +523,30 @@ static void lcd_dockposition_y()
     lcd_tune_value(dock_position[Y_AXIS], 0.0f, max_pos[Y_AXIS], 0.1f);
 }
 
-// create menu options for "axis steps/mm"
+static void lcd_dockposition_move()
+{
+    lcd_replace_menu(lcd_menu_dockmove, MAIN_MENU_ITEM_POS(1));
+    lcd_dockmove_init();
+}
+
+static void lcd_menu_dockmove_prepare()
+{
+    lcd_question_screen(NULL, lcd_dockposition_move, PSTR("CONTINUE"), NULL, lcd_change_to_previous_menu, PSTR("CANCEL"));
+
+    lcd_lib_draw_string_centerP( 8, PSTR("Remove the second"));
+    lcd_lib_draw_string_centerP(18, PSTR("printhead from the"));
+    lcd_lib_draw_string_centerP(28, PSTR("dock to start"));
+    lcd_lib_draw_string_centerP(38, PSTR("calibration."));
+
+    lcd_lib_update_screen();
+}
+
+static void lcd_dockmove_prepare()
+{
+    lcd_replace_menu(lcd_menu_dockmove_prepare, MAIN_MENU_ITEM_POS(1));
+}
+
+// create menu options for "dock position"
 static const menu_t & get_dockposition_menuoption(uint8_t nr, menu_t &opt)
 {
     uint8_t index(0);
@@ -321,6 +554,11 @@ static const menu_t & get_dockposition_menuoption(uint8_t nr, menu_t &opt)
     {
         // STORE
         opt.setData(MENU_NORMAL, lcd_store_dockposition);
+    }
+    else if (!active_extruder && nr == index++)
+    {
+        // MOVE
+        opt.setData(MENU_NORMAL, lcd_dockmove_prepare);
     }
     else if (nr == index++)
     {
@@ -354,28 +592,39 @@ static void drawDockPositionSubmenu(uint8_t nr, uint8_t &flags)
         }
         LCDMenu::drawMenuString_P(LCD_CHAR_MARGIN_LEFT
                                 , BOTTOM_MENU_YPOS
-                                , 52
+                                , 38
                                 , LCD_CHAR_HEIGHT
                                 , PSTR("STORE")
+                                , ALIGN_CENTER
+                                , flags);
+    }
+    else if (!active_extruder && nr == index++)
+    {
+        // move printhead to dock position
+        if (flags & MENU_SELECTED)
+        {
+            lcd_lib_draw_string_leftP(5, PSTR("Move head"));
+            flags |= MENU_STATUSLINE;
+        }
+        LCDMenu::drawMenuString_P(2*LCD_CHAR_MARGIN_LEFT + 38
+                                , BOTTOM_MENU_YPOS
+                                , 32
+                                , LCD_CHAR_HEIGHT
+                                , PSTR("MOVE")
                                 , ALIGN_CENTER
                                 , flags);
     }
     else if (nr == index++)
     {
         // RETURN
-        LCDMenu::drawMenuBox(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
-                           , BOTTOM_MENU_YPOS
-                           , 52
-                           , LCD_CHAR_HEIGHT
-                           , flags);
         if (flags & MENU_SELECTED)
         {
             lcd_lib_draw_string_leftP(5, PSTR("Click to return"));
             flags |= MENU_STATUSLINE;
         }
-        LCDMenu::drawMenuString_P(LCD_GFX_WIDTH/2 + 2*LCD_CHAR_MARGIN_LEFT
+        LCDMenu::drawMenuString_P(LCD_GFX_WIDTH - LCD_CHAR_MARGIN_RIGHT - 44
                                 , BOTTOM_MENU_YPOS
-                                , 52
+                                , 44
                                 , LCD_CHAR_HEIGHT
                                 , PSTR("RETURN")
                                 , ALIGN_CENTER
@@ -424,10 +673,16 @@ static void lcd_menu_dockposition()
     lcd_basic_screen();
     lcd_lib_draw_hline(3, 124, 13);
 
-    menu.process_submenu(get_dockposition_menuoption, 4);
+    uint8_t len = 5;
+    if (active_extruder)
+    {
+        --len;
+    }
+
+    menu.process_submenu(get_dockposition_menuoption, len);
 
     uint8_t flags = 0;
-    for (uint8_t index=0; index<4; ++index) {
+    for (uint8_t index=0; index<len; ++index) {
         menu.drawSubMenu(drawDockPositionSubmenu, index, flags);
     }
     if (!(flags & MENU_STATUSLINE))
@@ -592,7 +847,7 @@ static void lcd_tune_tcprime()
     lcd_tune_value(toolchange_prime[menu_extruder], -20.0f, 20.0f, 0.1f);
 }
 
-// create menu options for "axis steps/mm"
+// create menu options for "toolchange retract"
 static const menu_t & get_tcretract_menuoption(uint8_t nr, menu_t &opt)
 {
     uint8_t index(0);
@@ -763,7 +1018,7 @@ static void lcd_toggle_wipe()
     dual_state ^= DUAL_WIPE;
 }
 
-// create menu options for "axis steps/mm"
+// create menu options for "dual mode"
 static const menu_t & get_dualstate_menuoption(uint8_t nr, menu_t &opt)
 {
     uint8_t index(0);
@@ -914,14 +1169,9 @@ void switch_extruder(uint8_t newExtruder, bool moveZ)
 {
     if (newExtruder != active_extruder)
     {
-        st_synchronize();
-        if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
-        {
-            // home head
-            CommandBuffer::homeHead();
-            cmd_synchronize();
-            st_synchronize();
-        }
+        // home head if necessary
+        init_head_position();
+        // tool change
         changeExtruder(newExtruder, moveZ);
     }
 }
@@ -929,6 +1179,7 @@ void switch_extruder(uint8_t newExtruder, bool moveZ)
 static void lcd_switch_extruder()
 {
     switch_extruder(menu_extruder, false);
+    printing_state = PRINT_STATE_NORMAL;
     lcd_change_to_previous_menu();
 }
 
@@ -994,10 +1245,10 @@ FORCE_INLINE static void lcd_dual_switch_extruder()
 static void lcd_simple_buildplate_quit()
 {
     // home z-axis
-    enquecommand_P(PSTR("G28 Z0"));
+    CommandBuffer::homeBed();
     // home head
-    enquecommand_P(PSTR("G28 X0 Y0"));
-    enquecommand_P(PSTR("M84 X0 Y0"));
+    CommandBuffer::homeHead();
+    enquecommand_P(PSTR("M84"));
 }
 
 static void lcd_simple_buildplate_cancel()
@@ -1280,7 +1531,7 @@ void lcd_menu_dual()
             lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
         }
         else if (IS_SELECTED_SCROLL(5))
-            lcd_change_to_menu(lcd_menu_dockposition, MAIN_MENU_ITEM_POS(1));
+            lcd_change_to_menu(lcd_menu_dockposition, MAIN_MENU_ITEM_POS(2-active_extruder));
         else if (IS_SELECTED_SCROLL(6))
             lcd_change_to_menu(lcd_menu_wipeposition, MAIN_MENU_ITEM_POS(1));
         else if (IS_SELECTED_SCROLL(7))
