@@ -71,20 +71,7 @@ void CommandBuffer::processT0(bool bRetract, bool bWipe)
 
 void CommandBuffer::processT1(bool bRetract, bool bWipe)
 {
-    if (current_position[Y_AXIS] < TOOLCHANGE_STARTY)
-    {
-        CommandBuffer::moveHead(current_position[X_AXIS], TOOLCHANGE_STARTY, 200);
-    }
-    if (bRetract)
-    {
-        toolchange_retract(dock_position[X_AXIS], TOOLCHANGE_STARTY, 200, 0);
-    }
-    else
-    {
-        CommandBuffer::moveHead(dock_position[X_AXIS], TOOLCHANGE_STARTY, 200);
-    }
-    idle();
-    CommandBuffer::moveHead(dock_position[X_AXIS], dock_position[Y_AXIS], 100);
+    CommandBuffer::move2dock(bRetract);
     CommandBuffer::moveHead(TOOLCHANGE_STARTX, dock_position[Y_AXIS], 50);
 
     if (!bWipe | !bRetract)
@@ -158,6 +145,24 @@ void CommandBuffer::moveHead(float x, float y, int feedrate)
     current_position[X_AXIS] = x;
     current_position[Y_AXIS] = y;
     plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], feedrate, active_extruder);
+}
+
+void CommandBuffer::move2dock(bool bRetract)
+{
+    if (current_position[Y_AXIS] < TOOLCHANGE_STARTY)
+    {
+        CommandBuffer::moveHead(current_position[X_AXIS], TOOLCHANGE_STARTY, 200);
+    }
+    if (bRetract)
+    {
+        toolchange_retract(dock_position[X_AXIS], TOOLCHANGE_STARTY, 200, 0);
+    }
+    else
+    {
+        CommandBuffer::moveHead(dock_position[X_AXIS], TOOLCHANGE_STARTY, 200);
+    }
+    idle();
+    CommandBuffer::moveHead(dock_position[X_AXIS], dock_position[Y_AXIS], 100);
 }
 
 void CommandBuffer::move2heatup()
