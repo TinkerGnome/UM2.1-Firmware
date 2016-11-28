@@ -43,7 +43,9 @@ void lcd_init()
     }
     lcd_material_read_current_material();
     currentMenu = lcd_menu_startup;
+#ifndef DUAL_FAN
     analogWrite(LED_PIN, 0);
+#endif
     lastSerialCommandTime = millis() - SERIAL_CONTROL_TIMEOUT;
 }
 

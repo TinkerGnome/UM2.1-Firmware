@@ -1218,7 +1218,7 @@ void lcd_menu_print_tune_heatup_nozzle1()
 
 static void lcd_menu_print_tune()
 {
-    lcd_scroll_menu(PSTR("TUNE"), 3 + BED_MENU_OFFSET + EXTRUDERS * 5, tune_item_callback, tune_item_details_callback);
+    lcd_scroll_menu(PSTR("TUNE"), 2 + LED_MENU_OFFSET + BED_MENU_OFFSET + EXTRUDERS * 5, tune_item_callback, tune_item_details_callback);
     if (lcd_lib_button_pressed)
     {
         if (IS_SELECTED_SCROLL(0))
@@ -1272,8 +1272,10 @@ static void lcd_menu_print_tune()
             lcd_change_to_menu(lcd_menu_extruderoffset, MAIN_MENU_ITEM_POS(1));
         }
 #endif
+#ifndef DUAL_FAN
         else if (IS_SELECTED_SCROLL(2 + BED_MENU_OFFSET + EXTRUDERS * 5))
             LCD_EDIT_SETTING(led_brightness_level, "Brightness", "%", 0, 100);
+#endif
     }
 }
 
