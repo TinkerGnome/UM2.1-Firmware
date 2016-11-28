@@ -123,6 +123,12 @@ extern uint8_t led_glow_dir;
 #define BED_MENU_OFFSET 0
 #endif
 
+#ifdef DUAL_FAN
+#define LED_MENU_OFFSET 0
+#else
+#define LED_MENU_OFFSET 1
+#endif
+
 #ifdef USE_CHANGE_TEMPERATURE
 #define USE_CHANGE_TEMPERATURE_MENU_OFFSET 2
 #else
