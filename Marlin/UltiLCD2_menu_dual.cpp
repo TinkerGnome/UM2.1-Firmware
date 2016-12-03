@@ -1429,7 +1429,7 @@ static void lcd_prepare_buildplate_adjust()
     strcat_P(buffer, PSTR(" Z0"));
     enquecommand(buffer);
 
-    sprintf_P(buffer, PSTR("G1 F%i Z%i X%i Y%i"), int(homing_feedrate[0]), 35, AXIS_CENTER_POS(X_AXIS), AXIS_CENTER_POS(Y_AXIS));
+    sprintf_P(buffer, PSTR("G1 F%i Z%i X%i Y%i"), int(homing_feedrate[0]), 20, AXIS_CENTER_POS(X_AXIS), AXIS_CENTER_POS(Y_AXIS));
     enquecommand(buffer);
     enquecommand_P(PSTR("M84 X0 Y0"));
 }
@@ -1439,7 +1439,7 @@ void lcd_menu_simple_buildplate_init()
     lcd_lib_clear();
 
     float zPos = st_get_position(Z_AXIS) / axis_steps_per_unit[Z_AXIS];
-    if ((commands_queued() < 1) && (zPos < 35.01f))
+    if ((commands_queued() < 1) && (zPos < 20.01f))
     {
         currentMenu = lcd_menu_simple_buildplate;
         lcd_simple_buildplate_init();
