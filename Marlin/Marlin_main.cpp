@@ -2292,6 +2292,7 @@ void process_command(const char *strCmd)
         disable_e0();
         disable_e1();
         disable_e2();
+        card.pause = true;
         while(card.pause)
         {
           idle();
