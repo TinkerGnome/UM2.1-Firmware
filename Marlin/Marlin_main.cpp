@@ -814,15 +814,17 @@ XYZ_CONSTS_FROM_CONFIG(float, home_retract_mm, HOME_RETRACT_MM);
 XYZ_CONSTS_FROM_CONFIG(signed char, home_dir,  HOME_DIR);
 
 static void axis_is_at_home(int axis) {
-  current_position[axis] = base_home_pos(axis) + add_homeing[axis];
   min_pos[axis] =          base_min_pos(axis);// + add_homeing[axis];
   max_pos[axis] =          base_max_pos(axis);// + add_homeing[axis];
 
 #if EXTRUDERS > 1
+  current_position[axis] = ((axis == Z_AXIS) && active_extruder) ? base_home_pos(axis) + add_homeing_z2 : base_home_pos(axis) + add_homeing[axis];
   if (axis <= Y_AXIS)
   {
       current_position[axis] += extruder_offset[axis][active_extruder];
   }
+#else
+  current_position[axis] = base_home_pos(axis) + add_homeing[axis];
 #endif
   // keep position state in mind
   position_state |= (1 << axis);
@@ -2292,6 +2294,7 @@ void process_command(const char *strCmd)
         disable_e0();
         disable_e1();
         disable_e2();
+        card.pause = true;
         while(card.pause)
         {
           idle();
