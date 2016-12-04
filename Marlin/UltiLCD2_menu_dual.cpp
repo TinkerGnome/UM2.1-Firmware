@@ -228,7 +228,7 @@ static void drawExtruderOffsetSubmenu(uint8_t nr, uint8_t &flags)
             flags |= MENU_STATUSLINE;
         }
         lcd_lib_draw_string_leftP(28, PSTR("Y"));
-        float_to_string(extruder_offset[Y_AXIS][1]+((int8_t)LCD_CACHE_ID(Y_AXIS)*0.04f), buffer, PSTR("mm"));
+        float_to_string(extruder_offset[Y_AXIS][1]-((int8_t)LCD_CACHE_ID(Y_AXIS)*0.04f), buffer, PSTR("mm"));
         LCDMenu::drawMenuString(LCD_CHAR_MARGIN_LEFT+LCD_CHAR_SPACING*3
                                 , 28
                                 , LCD_CHAR_SPACING*8
@@ -284,7 +284,7 @@ void lcd_init_extruderoffset()
 void lcd_calc_extruderoffset()
 {
     extruder_offset[X_AXIS][1] += ((int8_t)LCD_CACHE_ID(X_AXIS)*0.04);
-    extruder_offset[Y_AXIS][1] += ((int8_t)LCD_CACHE_ID(Y_AXIS)*0.04);
+    extruder_offset[Y_AXIS][1] -= ((int8_t)LCD_CACHE_ID(Y_AXIS)*0.04);
     LCD_CACHE_ID(X_AXIS) = 0;
     LCD_CACHE_ID(Y_AXIS) = 0;
 }
