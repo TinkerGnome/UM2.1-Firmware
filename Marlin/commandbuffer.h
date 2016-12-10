@@ -20,7 +20,7 @@ class CommandBuffer
     void processT0(bool bRetract, bool bWipe);
     void processT1(bool bRetract, bool bWipe);
     void processWipe();
-
+  #if defined(TCSDSCRIPT)
     // constructor
     CommandBuffer () : t0(0), t1(0), wipe(0)  {}
     // destructor
@@ -44,13 +44,17 @@ class CommandBuffer
     uint8_t processScript(struct t_cmdline *script);
     struct t_cmdline* createScript();
     struct t_cmdline* readScript(const char *filename);
+  #else
+    // constructor
+    CommandBuffer() {}
+    // destructor
+    ~CommandBuffer() {}
+  #endif //TCSDSCRIPT
 #else
     // constructor
     CommandBuffer() {}
     // destructor
     ~CommandBuffer() {}
-
-    void initScripts() {}
 #endif // EXTRUDERS
 };
 

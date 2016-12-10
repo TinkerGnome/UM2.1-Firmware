@@ -462,7 +462,7 @@ void CardReader::checkautostart(bool force)
       return;
   }
 
-#if (EXTRUDERS > 1)
+#if (EXTRUDERS > 1) && defined(TCSDSCRIPT)
   if(!force)
   {
     // load command scripts

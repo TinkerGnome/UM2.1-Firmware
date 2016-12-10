@@ -21,6 +21,8 @@
 CommandBuffer cmdBuffer;
 
 #if (EXTRUDERS > 1)
+	
+#if defined(TCSDSCRIPT)
 CommandBuffer::~CommandBuffer()
 {
     deleteScript(t0);
@@ -141,6 +143,7 @@ uint8_t CommandBuffer::processScript(struct t_cmdline *script)
     }
     return cmdCount;
 }
+#endif //TCSDSCRIPT
 
 FORCE_INLINE void relative_e_move(const float eDiff, const float feedrate, uint8_t e)
 {
@@ -171,7 +174,7 @@ static void toolchange_retract(float x, float y, int feedrate, uint8_t e)
 
 void CommandBuffer::processT0(bool bRetract, bool bWipe)
 {
-#ifdef SDSUPPORT
+#if defined(SDSUPPORT) && defined(TCSDSCRIPT)
     if (t0)
     {
         processScript(t0);
@@ -200,7 +203,7 @@ void CommandBuffer::processT0(bool bRetract, bool bWipe)
 
 void CommandBuffer::processT1(bool bRetract, bool bWipe)
 {
-#ifdef SDSUPPORT
+#if defined(SDSUPPORT) && defined(TCSDSCRIPT)
     if (t1)
     {
         processScript(t1);
@@ -253,11 +256,11 @@ void CommandBuffer::processWipe()
     printing_state = old_printstate;
     check_axes_activity();
 
-#ifdef SDSUPPORT
+#if defined(SDSUPPORT) && defined(TCSDSCRIPT)
     if (wipe)
     {
         processScript(wipe);
-    }
+	}
     else
 #endif // SDSUPPORT
     {
