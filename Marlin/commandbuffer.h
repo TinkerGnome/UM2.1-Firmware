@@ -20,12 +20,38 @@ class CommandBuffer
     void processT0(bool bRetract, bool bWipe);
     void processT1(bool bRetract, bool bWipe);
     void processWipe();
-#endif // EXTRUDERS
 
+    // constructor
+    CommandBuffer () : t0(0), t1(0), wipe(0)  {}
+    // destructor
+    ~CommandBuffer ();
+
+    void initScripts();
+  private:
+    // the structure of a single node
+    struct t_cmdline{
+	  char *str;
+	  struct t_cmdline *next;
+	};
+
+    // command scripts for extruder change
+    struct t_cmdline *t0;
+    struct t_cmdline *t1;
+    struct t_cmdline *wipe;
+
+  private:
+    void deleteScript(struct t_cmdline *script);
+    uint8_t processScript(struct t_cmdline *script);
+    struct t_cmdline* createScript();
+    struct t_cmdline* readScript(const char *filename);
+#else
     // constructor
     CommandBuffer() {}
     // destructor
     ~CommandBuffer() {}
+
+    void initScripts() {}
+#endif // EXTRUDERS
 };
 
 extern CommandBuffer cmdBuffer;
