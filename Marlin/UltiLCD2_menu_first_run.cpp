@@ -17,7 +17,7 @@
 #define BED_LEFT_ADJUST_X 15
 #define BED_LEFT_ADJUST_Y 80
 #define BED_RIGHT_ADJUST_X (X_MAX_POS - 15)
-#define BED_RIGHT_ADJUST_Y 80
+#define BED_RIGHT_ADJUST_Y BED_LEFT_ADJUST_Y
 
 static void lcd_menu_first_run_init_2();
 static void lcd_menu_first_run_init_3();
