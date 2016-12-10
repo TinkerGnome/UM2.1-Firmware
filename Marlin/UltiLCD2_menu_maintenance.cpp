@@ -403,7 +403,7 @@ void lcd_menu_advanced_stats()
 {
     lcd_info_screen(previousMenu, NULL, PSTR("Return"));
     lcd_lib_draw_string_centerP(10, PSTR("Machine on for:"));
-    char buffer[16];
+    char buffer[LCD_MAX_TEXT_LINE_LENGTH + 1];      // Longest string = "hh:mm Mat:12345678m" = 19 characters + 1
     char* c = int_to_string(lifetime_minutes / 60, buffer, PSTR(":"));
     if (lifetime_minutes % 60 < 10)
         *c++ = '0';
@@ -520,7 +520,7 @@ static void lcd_menu_maintenance_motion()
             digipot_current(1, motor_current_setting[1]);
             digipot_current(2, motor_current_setting[2]);
             Config_StoreSettings();
-            lcd_change_to_menu(lcd_menu_maintenance_advanced, SCROLL_MENU_ITEM_POS(7));
+            lcd_change_to_menu(lcd_menu_maintenance_advanced, SCROLL_MENU_ITEM_POS(7 + BED_MENU_OFFSET + EXTRUDERS * 2));
         }
         else if (IS_SELECTED_SCROLL(1))
             LCD_EDIT_SETTING_FLOAT100(acceleration, "Acceleration", "mm/sec^2", 0, 20000);
