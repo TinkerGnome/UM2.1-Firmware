@@ -45,9 +45,7 @@
 #include "pins_arduino.h"
 #include "machinesettings.h"
 #include "UltiLCD2_menu_print.h"
-#if (EXTRUDERS > 1)
 #include "commandbuffer.h"
-#endif
 
 #if NUM_SERVOS > 0
 #include "Servo.h"
@@ -702,7 +700,7 @@ static void get_command()
     return;
   }
   static uint32_t endOfLineFilePosition = 0;
-  while( !card.eof()  && buflen < BUFSIZE) {
+  while( !card.eof() && buflen < BUFSIZE) {
     int16_t n=card.get();
     if (card.errorCode())
     {
@@ -744,7 +742,6 @@ static void get_command()
         lcd_setstatus(time);
         card.printingHasFinished();
         card.checkautostart(true);
-
       }
       if(!serial_count)
       {
@@ -848,6 +845,7 @@ static void homeaxis(int axis) {
     #endif
 
     // Do a fast run to the home position.
+    st_synchronize();
     current_position[axis] = 0;
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
     destination[axis] = 1.5 * max_length(axis) * home_dir(axis);
@@ -1000,12 +998,11 @@ inline void gcode_M105() {
   #if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_MAX6675)
     SERIAL_PROTOCOLPGM(MSG_OK);
     print_heaterstates();
+	SERIAL_EOL;
   #else // !HAS_TEMP_0 && !HAS_TEMP_BED
     SERIAL_ERROR_START;
     SERIAL_ERRORLNPGM(MSG_ERR_NO_THERMISTORS);
   #endif
-
-  SERIAL_EOL;
 }
 
 void process_command(const char *strCmd)
@@ -1050,15 +1047,12 @@ void process_command(const char *strCmd)
       if(code_seen('S')) codenum = code_value() * 1000; // seconds to wait
 
       st_synchronize();
-      codenum += millis();  // keep track of when we started waiting
       previous_millis_cmd = millis();
       if (printing_state < PRINT_STATE_TOOLCHANGE)
       {
         printing_state = PRINT_STATE_DWELL;
       }
-      while(millis() < codenum ){
-        idle();
-      }
+      CommandBuffer::dwell(codenum);
       break;
       #ifdef FWRETRACT
       case 10: // G10 retract
@@ -1116,6 +1110,7 @@ void process_command(const char *strCmd)
       if (printing_state != PRINT_STATE_ABORT)
         printing_state = PRINT_STATE_HOMING;
 
+      st_synchronize();
       saved_feedrate = feedrate;
       saved_feedmultiply = feedmultiply;
       feedmultiply = 100;
@@ -1158,7 +1153,7 @@ void process_command(const char *strCmd)
 
 #else // NOT DELTA
 
-          home_all_axis = !((code_seen(axis_codes[0])) || (code_seen(axis_codes[1])) || (code_seen(axis_codes[2])));
+      home_all_axis = !((code_seen(axis_codes[X_AXIS])) || (code_seen(axis_codes[Y_AXIS])) || (code_seen(axis_codes[Z_AXIS])));
 
       #if Z_HOME_DIR > 0                      // If homing away from BED do Z first
       #if defined(QUICK_HOME)
@@ -1739,6 +1734,7 @@ void process_command(const char *strCmd)
           }
         }
       }
+      st_synchronize();
       plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
       break;
     case 115: // M115
@@ -2251,6 +2247,7 @@ void process_command(const char *strCmd)
     #ifdef ENABLE_ULTILCD2
     case 601: //M601 Pause in UltiLCD2, X[pos] Y[pos] Z[relative lift] L[later retract distance]
     {
+        card.pauseSDPrint();
         st_synchronize();
         float target[NUM_AXIS];
         float lastpos[NUM_AXIS];
@@ -2658,7 +2655,8 @@ void get_coordinates()
                     else
                     {
                         // ignore additional retracts
-                        destination[E_AXIS] = current_position[E_AXIS];
+						current_position[E_AXIS] = destination[E_AXIS];
+                        plan_set_e_position(current_position[E_AXIS]);
                     }
                 }
                 else
@@ -2672,8 +2670,9 @@ void get_coordinates()
                 destination[Z_AXIS]+=retract_zlift; //not sure why chaninging current_position negatively does not work.
                 //if slicer retracted by echange=-1mm and you want to retract 3mm, corrrectede=-2mm additionally
                 float correctede=-echange-retract_length;
-                    //to generate the additional steps, not the destination is changed, but inversely the current position
+                //to generate the additional steps, not the destination is changed, but inversely the current position
                 current_position[E_AXIS]-=correctede;
+				plan_set_e_position(current_position[E_AXIS]);
                 retract_recover_length[active_extruder] -= correctede;
                 feedrate=retract_feedrate;
             }
@@ -2713,6 +2712,7 @@ void get_coordinates()
                 //if slicer retracted_recovered by echange=+1mm and you want to retract_recover 3mm, corrrectede=2mm additionally
                 float correctede=-echange+retract_length+retract_recover_length[active_extruder]; //total unretract=retract_length+retract_recover_length[surplus]
                 current_position[E_AXIS]+=correctede; //to generate the additional steps, not the destination is changed, but inversely the current position
+				plan_set_e_position(current_position[E_AXIS]);
                 feedrate=retract_recover_feedrate[active_extruder];
             }
             CLEAR_EXTRUDER_RETRACT(active_extruder);
@@ -2723,10 +2723,11 @@ void get_coordinates()
     else if ((seen & (1 << E_AXIS)) && TOOLCHANGE_RETRACTED(active_extruder) && (echange>0.0f))
     {
         // first e-move after toolchange -> recover retraction
-        float olddest[NUM_AXIS];
-        memcpy(olddest, destination, sizeof(olddest));
-        process_command_P(PSTR("G11"));
-        memcpy(destination, olddest, sizeof(destination));
+        plan_set_e_position(current_position[E_AXIS]-retract_recover_length[active_extruder]);
+        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], retract_recover_feedrate[active_extruder]/60, active_extruder);
+        CLEAR_EXTRUDER_RETRACT(active_extruder);
+        CLEAR_TOOLCHANGE_RETRACT(active_extruder);
+		retract_recover_length[active_extruder] = 0.0f;
     }
 #endif //FWRETRACT
 
@@ -3106,6 +3107,7 @@ void reheatNozzle(uint8_t e)
       {
           //Print Temp Reading every second while heating up
           print_heaterstates();
+		  SERIAL_EOL;
           last_output = millis();
       }
     #endif
@@ -3209,6 +3211,7 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         SERIAL_ECHOPGM(MSG_ACTIVE_EXTRUDER);
         SERIAL_PROTOCOLLN((int)active_extruder);
 
+		st_synchronize();
         plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 
         if (moveZ)
@@ -3283,6 +3286,7 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
     }
     // restore position
+	st_synchronize();
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
     return true;
 }

@@ -355,6 +355,46 @@ ISR(TIMER1_COMPA_vect)
       counter_e = counter_x;
       step_events_completed = 0;
 
+      // Set directions - This should be done once during init of trapezoid. Endstops -> interrupt
+      out_bits = current_block->direction_bits;
+
+      // Set the direction bits (X_AXIS=A_AXIS and Y_AXIS=B_AXIS for COREXY)
+      if((out_bits & (1<<X_AXIS))!=0){
+        WRITE(X_DIR_PIN, INVERT_X_DIR);
+        count_direction[X_AXIS]=-1;
+      }
+      else{
+        WRITE(X_DIR_PIN, !INVERT_X_DIR);
+        count_direction[X_AXIS]=1;
+      }
+      if((out_bits & (1<<Y_AXIS))!=0){
+        WRITE(Y_DIR_PIN, INVERT_Y_DIR);
+        count_direction[Y_AXIS]=-1;
+      }
+      else{
+        WRITE(Y_DIR_PIN, !INVERT_Y_DIR);
+        count_direction[Y_AXIS]=1;
+      }
+
+      if ((out_bits & (1<<Z_AXIS)) != 0) {   // -direction
+        WRITE(Z_DIR_PIN,INVERT_Z_DIR);
+
+	    #ifdef Z_DUAL_STEPPER_DRIVERS
+          WRITE(Z2_DIR_PIN,INVERT_Z_DIR);
+        #endif
+
+        count_direction[Z_AXIS]=-1;
+      }
+      else{
+        WRITE(Z_DIR_PIN,!INVERT_Z_DIR);
+
+	    #ifdef Z_DUAL_STEPPER_DRIVERS
+          WRITE(Z2_DIR_PIN,!INVERT_Z_DIR);
+        #endif
+
+        count_direction[Z_AXIS]=1;
+      }
+
       #ifdef Z_LATE_ENABLE
         if(current_block->steps_z > 0) {
           enable_z();
@@ -373,27 +413,6 @@ ISR(TIMER1_COMPA_vect)
   }
 
   if (current_block != NULL) {
-    // Set directions TO DO This should be done once during init of trapezoid. Endstops -> interrupt
-    out_bits = current_block->direction_bits;
-
-
-    // Set the direction bits (X_AXIS=A_AXIS and Y_AXIS=B_AXIS for COREXY)
-    if((out_bits & (1<<X_AXIS))!=0){
-      WRITE(X_DIR_PIN, INVERT_X_DIR);
-      count_direction[X_AXIS]=-1;
-    }
-    else{
-      WRITE(X_DIR_PIN, !INVERT_X_DIR);
-      count_direction[X_AXIS]=1;
-    }
-    if((out_bits & (1<<Y_AXIS))!=0){
-      WRITE(Y_DIR_PIN, INVERT_Y_DIR);
-      count_direction[Y_AXIS]=-1;
-    }
-    else{
-      WRITE(Y_DIR_PIN, !INVERT_Y_DIR);
-      count_direction[Y_AXIS]=1;
-    }
 
     // Set direction en check limit switches
     #ifndef COREXY
@@ -463,13 +482,6 @@ ISR(TIMER1_COMPA_vect)
     }
 
     if ((out_bits & (1<<Z_AXIS)) != 0) {   // -direction
-      WRITE(Z_DIR_PIN,INVERT_Z_DIR);
-
-	  #ifdef Z_DUAL_STEPPER_DRIVERS
-        WRITE(Z2_DIR_PIN,INVERT_Z_DIR);
-      #endif
-
-      count_direction[Z_AXIS]=-1;
       CHECK_ENDSTOPS
       {
         #if defined(Z_MIN_PIN) && Z_MIN_PIN > -1
@@ -484,13 +496,6 @@ ISR(TIMER1_COMPA_vect)
       }
     }
     else { // +direction
-      WRITE(Z_DIR_PIN,!INVERT_Z_DIR);
-
-	  #ifdef Z_DUAL_STEPPER_DRIVERS
-        WRITE(Z2_DIR_PIN,!INVERT_Z_DIR);
-      #endif
-
-      count_direction[Z_AXIS]=1;
       CHECK_ENDSTOPS
       {
         #if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
@@ -938,6 +943,12 @@ void quickStop()
     plan_discard_current_block();
   current_block = NULL;
   ENABLE_STEPPER_DRIVER_INTERRUPT();
+  for (uint8_t i=0; i<NUM_AXIS-1; ++i)
+  {
+    current_position[i] = float(st_get_position(i))/axis_steps_per_unit[i];
+  }
+  current_position[E_AXIS] = (float(st_get_position(E_AXIS))/axis_steps_per_unit[E_AXIS])/volume_to_filament_length[active_extruder];
+  plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
 }
 
 void digitalPotWrite(int address, int value) // From Arduino DigitalPotControl example

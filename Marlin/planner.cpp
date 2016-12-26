@@ -721,9 +721,9 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   block->nominal_rate = ceil(block->step_event_count * inverse_second); // (step/sec) Always > 0
 
   // Calculate and limit speed in mm/sec for each axis
-  float current_speed[4];
+  float current_speed[NUM_AXIS];
   float speed_factor = 1.0; //factor <=1 do decrease speed
-  for(int i=0; i < 4; i++)
+  for(int i=0; i < NUM_AXIS; i++)
   {
     current_speed[i] = delta_mm[i] * inverse_second;
     if(fabs(current_speed[i]) > max_feedrate[i])
@@ -768,7 +768,7 @@ block->steps_y = labs((target[X_AXIS]-position[X_AXIS]) - (target[Y_AXIS]-positi
   // Correct the speed
   if( speed_factor < 1.0)
   {
-    for(unsigned char i=0; i < 4; i++)
+    for(unsigned char i=0; i < NUM_AXIS; i++)
     {
       current_speed[i] *= speed_factor;
     }
