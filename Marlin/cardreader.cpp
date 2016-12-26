@@ -216,12 +216,8 @@ void CardReader::startFileprint()
 
 void CardReader::pauseSDPrint()
 {
-  if(sdprinting)
-  {
-    pause = true;
-  }
+  pause = true;
 }
-
 
 void CardReader::openLogFile(const char* name)
 {
@@ -576,11 +572,9 @@ void CardReader::printingHasFinished()
     file.close();
     sdprinting = false;
     pause = false;
-    if(SD_FINISHED_STEPPERRELEASE)
-    {
-        //finishAndDisableSteppers();
-        enquecommand_P(PSTR(SD_FINISHED_RELEASECOMMAND));
-    }
+#ifdef SD_FINISHED_STEPPERRELEASE
+    enquecommand_P(PSTR(SD_FINISHED_RELEASECOMMAND));
+#endif // SD_FINISHED_STEPPERRELEASE
     autotempShutdown();
 }
 #endif //SDSUPPORT
