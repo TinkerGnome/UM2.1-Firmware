@@ -1280,6 +1280,7 @@ static void lcd_simple_buildplate_store()
     Config_StoreSettings();
 #endif
     current_position[Z_AXIS] = 0;
+    st_synchronize();
     plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
     lcd_simple_buildplate_quit();
     lcd_change_to_previous_menu();

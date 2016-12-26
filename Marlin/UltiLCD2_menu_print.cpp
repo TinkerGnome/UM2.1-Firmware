@@ -65,12 +65,12 @@ void abortPrint()
     doCooldown();
     clear_command_queue();
 
-    for (uint8_t axis=0; axis<NUM_AXIS; ++axis)
+    // reset defaults
+    feedmultiply = 100;
+    for(uint8_t e=0; e<EXTRUDERS; e++)
     {
-        current_position[axis] = st_get_position(axis)/axis_steps_per_unit[axis];
+        extrudemultiply[e] = 100;
     }
-    current_position[E_AXIS] /= volume_to_filament_length[active_extruder];
-
 
     // set up the end of print retraction
     if ((primed & ENDOFPRINT_RETRACT) && (primed & (EXTRUDER_PRIMED << active_extruder)))
@@ -106,9 +106,9 @@ void abortPrint()
         // perform the retraction at the standard retract speed
         sprintf_P(buffer, PSTR("G1 F%i E0"), int(retract_feedrate));
         enquecommand(buffer);
+        cmd_synchronize();
 #endif
 
-        cmd_synchronize();
         // no longer primed
         primed = 0;
     }
@@ -138,9 +138,7 @@ void abortPrint()
 
     // finish all queued commands
     cmd_synchronize();
-    st_synchronize();
-
-    enquecommand_P(PSTR("M84"));
+    finishAndDisableSteppers();
     stoptime = millis();
     lifetime_stats_print_end();
 
@@ -150,14 +148,13 @@ void abortPrint()
     printing_state = PRINT_STATE_NORMAL;
 
     // reset defaults
-    retract_state = 0;
-    feedmultiply = 100;
+	retract_state = 0;
     fanSpeedPercent = 100;
-    for(uint8_t e=0; e<EXTRUDERS; e++)
+    for(uint8_t e=0; e<EXTRUDERS; ++e)
     {
         volume_to_filament_length[e] = 1.0;
-        extrudemultiply[e] = 100;
     }
+    axis_relative_state = 0;
 }
 
 static void checkPrintFinished()
@@ -174,7 +171,6 @@ static void checkPrintFinished()
         SELECT_MAIN_MENU_ITEM(0);
     }else if (position_error)
     {
-        quickStop();
         abortPrint();
         currentMenu = lcd_menu_print_error_position;
         SELECT_MAIN_MENU_ITEM(0);
@@ -334,7 +330,7 @@ static char* lcd_sd_menu_filename_callback(uint8_t nr)
                 strcpy(card.longFilename, card.filename);
             if (!card.filenameIsDir)
             {
-                if (strchr(card.longFilename, '.')) strrchr(card.longFilename, '.')[0] = '\0';
+                if (strrchr(card.longFilename, '.')) strrchr(card.longFilename, '.')[0] = '\0';
             }
 
             uint8_t idx = nr % LCD_CACHE_COUNT;
@@ -528,6 +524,8 @@ void lcd_menu_print_select()
             if (card.atRoot())
             {
                 lcd_change_to_menu(lcd_menu_main);
+                lcd_clear_cache();
+                return;
             }else{
                 lcd_clear_cache();
                 lcd_lib_beep();
@@ -538,11 +536,11 @@ void lcd_menu_print_select()
             if (!card.filenameIsDir)
             {
                 //Start print
-#if (EXTRUDERS > 1)
-                switch_extruder(0, false);
-#else
-                active_extruder = 0;
-#endif
+//#if (EXTRUDERS > 1)
+//                switch_extruder(0, false);
+//#else
+//                active_extruder = 0;
+//#endif
                 card.openFile(card.filename, true);
                 if (card.isFileOpen() && !is_command_queued())
                 {
@@ -576,10 +574,8 @@ void lcd_menu_print_select()
                     feedmultiply = 100;
                     target_temperature_bed_diff = 0;
                     axis_relative_state = 0;
-                    feedmultiply = 100;
-                    target_temperature_bed_diff = 0;
 
-                    for(uint8_t e=0; e<EXTRUDERS; e++)
+                    for(uint8_t e=0; e<EXTRUDERS; ++e)
                     {
                         volume_to_filament_length[e] = 1.0;
                         extrudemultiply[e] = 100;
@@ -596,14 +592,13 @@ void lcd_menu_print_select()
                         target_temperature_bed = 0;
 #endif
                         fanSpeedPercent = 0;
-                        for(uint8_t e=0; e<EXTRUDERS; e++)
+                        for(uint8_t e=0; e<EXTRUDERS; ++e)
                         {
                             volume_to_filament_length[e] = 1.0 / (M_PI * (material[e].diameter / 2.0) * (material[e].diameter / 2.0));
                             extrudemultiply[e] = material[e].flow;
                             retract_feedrate = material[e].retraction_speed[nozzleSizeToTemperatureIndex(LCD_DETAIL_CACHE_NOZZLE_DIAMETER(e))];
                             retract_length = material[e].retraction_length[nozzleSizeToTemperatureIndex(LCD_DETAIL_CACHE_NOZZLE_DIAMETER(e))];
                             target_temperature[e] = 0;
-                            target_temperature_diff[e] = 0;
 
                             if (LCD_DETAIL_CACHE_MATERIAL(e) < 1)
                                 continue;
