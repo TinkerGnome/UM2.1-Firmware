@@ -486,6 +486,18 @@ void setup()
 
   lcd_init();
 
+  for (uint8_t e=0; e<EXTRUDERS; ++e)
+  {
+      SET_TOOLCHANGE_RETRACT(e);
+      SET_EXTRUDER_RETRACT(e);
+      retract_recover_feedrate[e] = retract_feedrate;
+#if (EXTRUDERS > 1)
+      retract_recover_length[e] = toolchange_retractlen[e] / volume_to_filament_length[e];
+#else
+      retract_recover_length[e] = end_of_print_retraction / volume_to_filament_length[e];
+#endif
+  }
+  
   #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1
     SET_OUTPUT(CONTROLLERFAN_PIN); //Set pin used for driver cooling fan
   #endif
@@ -2642,49 +2654,30 @@ void get_coordinates()
         // e axis only
         if (echange<-MIN_RETRACT)
         {
-            // accumulate retract length during tool change
-            if (printing_state >= PRINT_STATE_TOOLCHANGE)
-            {
-                if (TOOLCHANGE_RETRACTED(active_extruder))
-                {
-                    if (printing_state == PRINT_STATE_TOOLCHANGE)
-                    {
-                        // additional toolchange retract
-                        retract_recover_length[active_extruder] -= echange;
-                    }
-                    else
-                    {
-                        // ignore additional retracts
-						current_position[E_AXIS] = destination[E_AXIS];
-                        plan_set_e_position(current_position[E_AXIS]);
-                    }
-                }
-                else
-                {
-                    retract_recover_length[active_extruder] = -echange;
-                    SET_TOOLCHANGE_RETRACT(active_extruder);
-                }
-            }
-            else if (AUTORETRACT_ENABLED && !EXTRUDER_RETRACTED(active_extruder))
+            if (AUTORETRACT_ENABLED && !EXTRUDER_RETRACTED(active_extruder))
             {
                 destination[Z_AXIS]+=retract_zlift; //not sure why chaninging current_position negatively does not work.
                 //if slicer retracted by echange=-1mm and you want to retract 3mm, corrrectede=-2mm additionally
                 float correctede=-echange-retract_length;
                 //to generate the additional steps, not the destination is changed, but inversely the current position
                 current_position[E_AXIS]-=correctede;
+				st_synchronize();
 				plan_set_e_position(current_position[E_AXIS]);
                 retract_recover_length[active_extruder] -= correctede;
                 feedrate=retract_feedrate;
             }
             else
             {
-                // keep last retraction in mind
-                if (EXTRUDER_RETRACTED(active_extruder))
+                if(EXTRUDER_RETRACTED(active_extruder) || TOOLCHANGE_RETRACTED(active_extruder))
                 {
-                    retract_recover_length[active_extruder] -= echange;
+                    // ignore additional retracts
+                    st_synchronize();
+                    current_position[E_AXIS] = destination[E_AXIS];
+                    plan_set_e_position(current_position[E_AXIS]);
                 }
                 else
                 {
+                    // keep last retraction in mind
                     retract_recover_length[active_extruder] = -echange;
                 }
             }
@@ -2692,15 +2685,10 @@ void get_coordinates()
         }
         else if (echange>MIN_RETRACT) //retract_recover
         {
-            if (TOOLCHANGE_RETRACTED(active_extruder))
+            if (EXTRUDER_RETRACTED(active_extruder) || TOOLCHANGE_RETRACTED(active_extruder))
             {
                 // retraction recover after tool change
-
-//                float olddest = destination[E_AXIS];
-//                retract_recover_length[active_extruder] -=echange;
-//                process_command_P(PSTR("G11"));
-//                destination[E_AXIS] = olddest;
-
+				st_synchronize();
                 float correctede=-echange+retract_recover_length[active_extruder]; //total unretract=retract_length+retract_recover_length[surplus]
                 current_position[E_AXIS]-=correctede; //to generate the additional steps, not the destination is changed, but inversely the current position
                 plan_set_e_position(current_position[E_AXIS]);
@@ -2708,6 +2696,7 @@ void get_coordinates()
             }
             else if (AUTORETRACT_ENABLED && EXTRUDER_RETRACTED(active_extruder))
             {
+				st_synchronize();
                 current_position[Z_AXIS]-=retract_zlift;
                 //if slicer retracted_recovered by echange=+1mm and you want to retract_recover 3mm, corrrectede=2mm additionally
                 float correctede=-echange+retract_length+retract_recover_length[active_extruder]; //total unretract=retract_length+retract_recover_length[surplus]
@@ -3178,6 +3167,12 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
 
         if IS_TOOLCHANGE_ENABLED
         {
+            if (IS_WIPE_ENABLED)
+            {
+                // limit fan speed during priming
+                printing_state = PRINT_STATE_PRIMING;
+                check_axes_activity();
+            }
             // execute toolchange script
             current_position[Z_AXIS] = destination[Z_AXIS];
             if (nextExtruder)
