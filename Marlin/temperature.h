@@ -93,19 +93,19 @@ FORCE_INLINE void setTargetBed(const float &celsius) {
 };
 
 FORCE_INLINE bool isHeatingHotend(uint8_t extruder){
-  return target_temperature[extruder] + target_temperature_diff[extruder] > current_temperature[extruder];
+  return (target_temperature[extruder] + target_temperature_diff[extruder]) > current_temperature[extruder];
 };
 
 FORCE_INLINE bool isHeatingBed() {
-  return target_temperature_bed + target_temperature_bed_diff > current_temperature_bed;
+  return (target_temperature_bed + target_temperature_bed_diff) > current_temperature_bed;
 };
 
 FORCE_INLINE bool isCoolingHotend(uint8_t extruder) {
-  return target_temperature[extruder] + target_temperature_diff[extruder] < current_temperature[extruder];
+  return (target_temperature[extruder] + target_temperature_diff[extruder]) < current_temperature[extruder];
 };
 
 FORCE_INLINE bool isCoolingBed() {
-  return target_temperature_bed + target_temperature_bed_diff < current_temperature_bed;
+  return (target_temperature_bed + target_temperature_bed_diff) < current_temperature_bed;
 };
 
 #define degHotend0() degHotend(0)

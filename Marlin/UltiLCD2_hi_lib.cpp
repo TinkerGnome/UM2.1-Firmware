@@ -21,22 +21,25 @@ int16_t lcd_setting_min;
 int16_t lcd_setting_max;
 int16_t lcd_setting_start_value;
 
-void lcd_replace_menu(menuFunc_t nextMenu, int16_t newEncoderPos)
+void lcd_replace_menu(menuFunc_t nextMenu, int16_t newEncoderPos, bool beep)
 {
     minProgress = 0;
     led_glow = led_glow_dir = 0;
     LED_NORMAL();
-    lcd_lib_beep();
+    if (beep)
+    {
+        lcd_lib_beep();
+    }
     currentMenu = nextMenu;
     lcd_lib_encoder_pos = newEncoderPos;
 }
 
-void lcd_change_to_menu(menuFunc_t nextMenu, int16_t newEncoderPos)
+void lcd_change_to_menu(menuFunc_t nextMenu, int16_t newEncoderPos, bool beep)
 {
     previousMenu = currentMenu;
     previousEncoderPos = lcd_lib_encoder_pos;
     minProgress = 0;
-    lcd_replace_menu(nextMenu, newEncoderPos);
+    lcd_replace_menu(nextMenu, newEncoderPos, true);
 }
 
 void lcd_tripple_menu(const char* left, const char* right, const char* bottom)

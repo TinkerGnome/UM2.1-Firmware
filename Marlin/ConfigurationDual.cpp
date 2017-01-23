@@ -22,15 +22,16 @@
 #define WIPE_Y_POSITION     17
 
 #define TOOLCHANGE_RETRACT_LENGTH  16
-#define TOOLCHANGE_RETRACT_SPEED   20
+#define TOOLCHANGE_RETRACT_SPEED   20*60
 
 uint8_t dual_state = DUAL_ENABLED | DUAL_TOOLCHANGE | DUAL_WIPE;
-float add_homeing_z2;
-float dock_position[2];
-float wipe_position[2];
-float toolchange_retractlen[EXTRUDERS];
-float toolchange_retractfeedrate[EXTRUDERS];
-float toolchange_prime[EXTRUDERS];
+float add_homeing_z2 = 0.0f;
+float dock_position[2] = {0.0f, 0.0f};
+float wipe_position[2] = {0.0f, 0.0f};
+float toolchange_retractlen[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0.0f, 0.0f, 0.0f);
+float toolchange_retractfeedrate[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0.0f, 0.0f, 0.0f);
+float toolchange_prime[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0.0f, 0.0f, 0.0f);
+float toolchange_recover_length[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0.0f, 0.0f, 0.0f);
 
 #ifdef EEPROM_SETTINGS
 static bool Dual_RetrieveVersion(uint16_t &version)

@@ -20,7 +20,7 @@ class CommandBuffer
 #if EXTRUDERS > 1
     void processT0(bool bRetract, bool bWipe);
     void processT1(bool bRetract, bool bWipe);
-    void processWipe();
+    void processWipe(const uint8_t printState);
   #if defined(TCSDSCRIPT)
     // constructor
     CommandBuffer () : t0(0), t1(0), wipe(0)  {}
