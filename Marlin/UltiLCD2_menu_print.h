@@ -16,7 +16,7 @@ extern uint8_t primed;
 
 void lcd_menu_print_select();
 void lcd_clear_cache();
-void abortPrint();
+void abortPrint(bool bQuickstop);
 
 
 #endif//ULTI_LCD2_MENU_PRINT_H

@@ -541,7 +541,7 @@ void loop()
 {
   if (printing_state == PRINT_STATE_ABORT)
   {
-    abortPrint();
+    abortPrint(true);
   }
   #ifdef SDSUPPORT
   card.checkautostart(false);
@@ -3151,6 +3151,8 @@ static void recover_toolchange_retract(uint8_t e, bool bSynchronize)
         plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], toolchange_retractfeedrate[e]/60, e);
         CLEAR_TOOLCHANGE_RETRACT(e);
         toolchange_recover_length[e] = 0.0f;
+        primed |= (EXTRUDER_PRIMED << e);
+        primed |= ENDOFPRINT_RETRACT;
     }
 }
 
