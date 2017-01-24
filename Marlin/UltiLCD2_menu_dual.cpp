@@ -1005,16 +1005,19 @@ void lcd_menu_tune_tcretract()
 
 static void lcd_toggle_dual()
 {
+    lcd_lib_tick();
     dual_state ^= DUAL_ENABLED;
 }
 
 static void lcd_toggle_toolchange()
 {
+    lcd_lib_tick();
     dual_state ^= DUAL_TOOLCHANGE;
 }
 
 static void lcd_toggle_wipe()
 {
+    lcd_lib_tick();
     dual_state ^= DUAL_WIPE;
 }
 

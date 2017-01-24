@@ -11,6 +11,7 @@
 #include "UltiLCD2_menu_material.h"
 #include "UltiLCD2_menu_first_run.h"
 #include "UltiLCD2_menu_print.h"
+#include "commandbuffer.h"
 
 #define BED_CENTER_ADJUST_X (X_MAX_POS/2)
 #define BED_CENTER_ADJUST_Y ((int)Y_MAX_LENGTH - 10)
@@ -287,9 +288,10 @@ static void lcd_menu_first_run_bed_level_paper_right()
 
 static void parkHeadForHeating()
 {
+    cmd_synchronize();
     lcd_material_reset_defaults();
-    enquecommand_P(PSTR("G1 F12000 X110 Y10"));
-    enquecommand_P(PSTR("M84"));//Disable motor power.
+    CommandBuffer::move2front();
+    finishAndDisableSteppers();//Disable motor power.
 }
 
 static void lcd_menu_first_run_material_load()
@@ -393,6 +395,7 @@ static void lcd_menu_first_run_material_load_heatup()
         for(uint8_t e=0; e<EXTRUDERS; e++)
             volume_to_filament_length[e] = 1.0;//Set the extrusion to 1mm per given value, so we can move the filament a set distance.
 
+        plan_set_e_position(current_position[E_AXIS], true);
         currentMenu = lcd_menu_first_run_material_load_insert;
         temp = target;
     }
@@ -422,8 +425,9 @@ static void runMaterialForward()
     max_feedrate[E_AXIS] = FILAMENT_INSERT_FAST_SPEED;
     retract_acceleration = FILAMENT_LONG_MOVE_ACCELERATION;
 
+    quickStop();
     current_position[E_AXIS] = 0;
-    plan_set_e_position(current_position[E_AXIS]);
+    plan_set_e_position(current_position[E_AXIS], true);
     current_position[E_AXIS] = FILAMENT_FORWARD_LENGTH;
     plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], FILAMENT_INSERT_FAST_SPEED, 0);
 
@@ -436,20 +440,21 @@ static void lcd_menu_first_run_material_load_insert()
 {
     LED_GLOW();
 
-    if (movesplanned() < 2)
-    {
-        current_position[E_AXIS] += 0.5;
-        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], FILAMENT_INSERT_SPEED, 0);
-    }
-
     SELECT_MAIN_MENU_ITEM(0);
     lcd_info_screen(lcd_menu_first_run_material_load_forward, runMaterialForward, PSTR("CONTINUE"));
     DRAW_PROGRESS_NR(17);
+
     lcd_lib_draw_string_centerP(10, PSTR("Insert new material"));
     lcd_lib_draw_string_centerP(20, PSTR("from the rear of"));
     lcd_lib_draw_string_centerP(30, PSTR("your Ultimaker2,"));
     lcd_lib_draw_string_centerP(40, PSTR("above the arrow."));
     lcd_lib_update_screen();
+
+    if (movesplanned() < 2)
+    {
+        current_position[E_AXIS] += 0.5;
+        plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], FILAMENT_INSERT_SPEED, 0);
+    }
 }
 
 static void lcd_menu_first_run_material_load_forward()

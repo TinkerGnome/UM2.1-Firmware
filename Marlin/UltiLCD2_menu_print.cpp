@@ -57,13 +57,22 @@ void lcd_clear_cache()
     LCD_CACHE_NR_OF_FILES() = 0xFF;
 }
 
-void abortPrint()
+void abortPrint(bool bQuickstop)
 {
     postMenuCheck = NULL;
-
-    quickStop();
-    doCooldown();
     clear_command_queue();
+
+    if (bQuickstop)
+    {
+        quickStop();
+    }
+    else
+    {
+        st_synchronize();
+    }
+
+    // we're not printing any more
+    card.sdprinting = false;
 
     // reset defaults
     feedmultiply = 100;
@@ -71,6 +80,9 @@ void abortPrint()
     {
         extrudemultiply[e] = 100;
     }
+
+    float minTemp = get_extrude_min_temp();
+    set_extrude_min_temp(0.0f);
 
     // set up the end of print retraction
     if ((primed & ENDOFPRINT_RETRACT) && (primed & (EXTRUDER_PRIMED << active_extruder)))
@@ -108,18 +120,20 @@ void abortPrint()
         enquecommand(buffer);
         cmd_synchronize();
 #endif
-
-        // no longer primed
-        primed = 0;
     }
 
-//#if EXTRUDERS > 1
-//    switch_extruder(0, false);
-//#endif // EXTRUDERS
+    // no longer primed
+    primed = 0;
+    set_extrude_min_temp(minTemp);
+    doCooldown();
 
+#if EXTRUDERS > 1
+    if (!bQuickstop && active_extruder)
+    {
+        switch_extruder(0, true);
+    }
     // move to a safe y position in dual mode
     CommandBuffer::move2SafeYPos();
-
     if (current_position[Z_AXIS] > Z_MAX_POS - 30)
     {
         CommandBuffer::homeHead();
@@ -129,12 +143,18 @@ void abortPrint()
     {
         CommandBuffer::homeAll();
     }
-
-    if (card.sdprinting)
+    CommandBuffer::homeHead();
+#else
+    if (current_position[Z_AXIS] > Z_MAX_POS - 30)
     {
-        // we're not printing any more
-        card.sdprinting = false;
+        CommandBuffer::homeHead();
+        CommandBuffer::homeBed();
     }
+    else
+    {
+        CommandBuffer::homeAll();
+    }
+#endif // EXTRUDERS
 
     // finish all queued commands
     cmd_synchronize();
@@ -148,7 +168,6 @@ void abortPrint()
     printing_state = PRINT_STATE_NORMAL;
 
     // reset defaults
-    retract_state = 0;
     fanSpeedPercent = 100;
     for(uint8_t e=0; e<EXTRUDERS; ++e)
     {
@@ -167,22 +186,17 @@ static void checkPrintFinished()
     if (!card.sdprinting && !is_command_queued())
     {
         // normal end of print
-        postMenuCheck = NULL;
-#if EXTRUDERS > 1
-        enquecommand_P(PSTR("T0"));
-#endif
-        st_synchronize();
-        abortPrint();
+        abortPrint(false);
         currentMenu = lcd_menu_print_ready;
         SELECT_MAIN_MENU_ITEM(0);
     }else if (position_error)
     {
-        abortPrint();
+        abortPrint(true);
         currentMenu = lcd_menu_print_error_position;
         SELECT_MAIN_MENU_ITEM(0);
     }else if (card.errorCode())
     {
-        abortPrint();
+        abortPrint(true);
         currentMenu = lcd_menu_print_error_sd;
         SELECT_MAIN_MENU_ITEM(0);
     }

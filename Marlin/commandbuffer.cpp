@@ -195,11 +195,9 @@ void CommandBuffer::processT0(bool bRetract, bool bWipe)
             CommandBuffer::moveHead(TOOLCHANGE_STARTX, ypos, 200);
         }
         CommandBuffer::moveHead(current_position[X_AXIS], dock_position[Y_AXIS], 100);
-        idle();
         CommandBuffer::moveHead(dock_position[X_AXIS], current_position[Y_AXIS], 50);
         CommandBuffer::moveHead(current_position[X_AXIS], TOOLCHANGE_STARTY, 100);
-        CommandBuffer::moveHead(TOOLCHANGE_STARTX-50.0f, TOOLCHANGE_STARTY, 200);
-        idle();
+        CommandBuffer::moveHead(wipe_position[X_AXIS], current_position[Y_AXIS], 200);
 	}
 }
 
@@ -244,6 +242,8 @@ void CommandBuffer::processWipe(const uint8_t printState)
     // prime nozzle
 //    relative_e_move((length*0.2)+toolchange_prime[active_extruder]/volume_to_filament_length[active_extruder], (PRIMING_MM3_PER_SEC * volume_to_filament_length[active_extruder]), active_extruder);
     relative_e_move((length*0.2)+toolchange_prime[active_extruder]/volume_to_filament_length[active_extruder], 0.5f, active_extruder);
+    primed |= (EXTRUDER_PRIMED << active_extruder);
+    primed |= ENDOFPRINT_RETRACT;
 
     // retract before wipe
     if (!EXTRUDER_RETRACTED(active_extruder))
@@ -331,7 +331,7 @@ void CommandBuffer::move2heatup()
     if IS_DUAL_ENABLED
     {
         x = wipe_position[X_AXIS]+extruder_offset[X_AXIS][active_extruder];
-        if (current_position[Y_AXIS] > TOOLCHANGE_STARTY)
+        if (current_position[Y_AXIS] >= TOOLCHANGE_STARTY)
         {
         // y = 65.0f;
             CommandBuffer::moveHead(x, TOOLCHANGE_STARTY, 200);
@@ -352,15 +352,17 @@ void CommandBuffer::move2heatup()
 
 void CommandBuffer::move2front()
 {
-    float x = AXIS_CENTER_POS(X_AXIS);
 #if (EXTRUDERS > 1)
-    float y = IS_DUAL_ENABLED ? int(min_pos[Y_AXIS])+70 : int(min_pos[Y_AXIS])+10;
+    float x = IS_DUAL_ENABLED ? wipe_position[X_AXIS]+extruder_offset[X_AXIS][active_extruder] : AXIS_CENTER_POS(X_AXIS);
+    float y = IS_DUAL_ENABLED ? int(min_pos[Y_AXIS])+DUAL_Y_MIN_POS : int(min_pos[Y_AXIS])+10;
 #else
+    float x = AXIS_CENTER_POS(X_AXIS);
     float y = int(min_pos[Y_AXIS])+10;
 #endif
     CommandBuffer::moveHead(x, y, 200);
 }
 
+#if (EXTRUDERS > 1)
 // move to a safe y position in dual mode
 void CommandBuffer::move2SafeYPos()
 {
@@ -369,6 +371,7 @@ void CommandBuffer::move2SafeYPos()
         moveHead(current_position[X_AXIS], DUAL_Y_MIN_POS, 120);
     }
 }
+#endif
 
 void CommandBuffer::homeHead()
 {
