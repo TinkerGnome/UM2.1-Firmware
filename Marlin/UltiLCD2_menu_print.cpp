@@ -134,27 +134,16 @@ void abortPrint(bool bQuickstop)
     }
     // move to a safe y position in dual mode
     CommandBuffer::move2SafeYPos();
-    if (current_position[Z_AXIS] > Z_MAX_POS - 30)
-    {
-        CommandBuffer::homeHead();
-        CommandBuffer::homeBed();
-    }
-    else
-    {
-        CommandBuffer::homeAll();
-    }
-    CommandBuffer::homeHead();
-#else
-    if (current_position[Z_AXIS] > Z_MAX_POS - 30)
-    {
-        CommandBuffer::homeHead();
-        CommandBuffer::homeBed();
-    }
-    else
-    {
-        CommandBuffer::homeAll();
-    }
 #endif // EXTRUDERS
+    if (current_position[Z_AXIS] > Z_MAX_POS - 30)
+    {
+        CommandBuffer::homeHead();
+        CommandBuffer::homeBed();
+    }
+    else
+    {
+        CommandBuffer::homeAll();
+    }
 
     // finish all queued commands
     cmd_synchronize();
