@@ -1005,16 +1005,19 @@ void lcd_menu_tune_tcretract()
 
 static void lcd_toggle_dual()
 {
+    lcd_lib_tick();
     dual_state ^= DUAL_ENABLED;
 }
 
 static void lcd_toggle_toolchange()
 {
+    lcd_lib_tick();
     dual_state ^= DUAL_TOOLCHANGE;
 }
 
 static void lcd_toggle_wipe()
 {
+    lcd_lib_tick();
     dual_state ^= DUAL_WIPE;
 }
 
@@ -1505,7 +1508,7 @@ static void lcd_dual_details(uint8_t nr)
 
 static void start_menu_tcretract()
 {
-    lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1));
+    lcd_change_to_menu(lcd_menu_tune_tcretract, MAIN_MENU_ITEM_POS(1), false);
 }
 
 static void lcd_menu_tcretraction()
@@ -1552,7 +1555,7 @@ void lcd_select_nozzle(menuFunc_t nextMenu, menuFunc_t callbackOnSelect, menuFun
         uint8_t index(SELECTED_MAIN_MENU_ITEM());
         if (nextMenu)
         {
-            lcd_replace_menu(nextMenu, previousEncoderPos);
+            lcd_replace_menu(nextMenu, previousEncoderPos, true);
         }
         if (index < 2)
         {

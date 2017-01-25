@@ -246,14 +246,8 @@ extern float retract_recover_feedrate[EXTRUDERS];
 
 void reheatNozzle(uint8_t e);
 
-FORCE_INLINE void reset_retractstate()
-{
-    for (uint8_t e=0; e<EXTRUDERS; ++e)
-    {
-        CLEAR_EXTRUDER_RETRACT(e);
-        CLEAR_TOOLCHANGE_RETRACT(e);
-    }
-}
+void reset_retractstate();
+
 #endif //FWRETRACT
 
 extern unsigned long starttime;

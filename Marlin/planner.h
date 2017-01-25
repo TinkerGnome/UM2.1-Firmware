@@ -75,8 +75,8 @@ void plan_init();
 void plan_buffer_line(const float &x, const float &y, const float &z, const float &e, float feed_rate, const uint8_t &extruder);
 
 // Set position. Used for G92 instructions.
-void plan_set_position(const float &x, const float &y, const float &z, const float &e);
-void plan_set_e_position(const float &e);
+void plan_set_position(const float &x, const float &y, const float &z, const float &e, bool bSynchronize=true);
+void plan_set_e_position(const float &e, bool bSynchronize=true);
 
 
 

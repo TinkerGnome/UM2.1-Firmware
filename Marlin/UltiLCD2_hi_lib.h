@@ -20,8 +20,8 @@ typedef void (*entryDetailsCallback_t)(uint8_t nr);
 #define IS_SELECTED_MAIN(n) ((n) == SELECTED_MAIN_MENU_ITEM())
 #define IS_SELECTED_SCROLL(n) ((n) == SELECTED_SCROLL_MENU_ITEM())
 
-void lcd_replace_menu(menuFunc_t nextMenu, int16_t newEncoderPos = ENCODER_NO_SELECTION);
-void lcd_change_to_menu(menuFunc_t nextMenu, int16_t newEncoderPos = ENCODER_NO_SELECTION);
+void lcd_replace_menu(menuFunc_t nextMenu, int16_t newEncoderPos = ENCODER_NO_SELECTION, bool beep = true);
+void lcd_change_to_menu(menuFunc_t nextMenu, int16_t newEncoderPos = ENCODER_NO_SELECTION, bool beep = true);
 
 void lcd_tripple_menu(const char* left, const char* right, const char* bottom);
 void lcd_basic_screen();

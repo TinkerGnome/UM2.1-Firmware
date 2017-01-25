@@ -27,6 +27,7 @@ extern float wipe_position[2];
 extern float toolchange_retractlen[EXTRUDERS];
 extern float toolchange_retractfeedrate[EXTRUDERS];
 extern float toolchange_prime[EXTRUDERS];
+extern float toolchange_recover_length[EXTRUDERS];
 
 #ifdef EEPROM_CHITCHAT
 void Dual_PrintSettings();

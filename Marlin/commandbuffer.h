@@ -14,13 +14,13 @@ class CommandBuffer
     static void move2heatup();
     static void move2front();
     static void moveHead(float x, float y, int feedrate);
-    static void move2SafeYPos();
     static void dwell(const unsigned long m);
 
 #if EXTRUDERS > 1
+    static void move2SafeYPos();
     void processT0(bool bRetract, bool bWipe);
     void processT1(bool bRetract, bool bWipe);
-    void processWipe();
+    void processWipe(const uint8_t printState);
   #if defined(TCSDSCRIPT)
     // constructor
     CommandBuffer () : t0(0), t1(0), wipe(0)  {}
