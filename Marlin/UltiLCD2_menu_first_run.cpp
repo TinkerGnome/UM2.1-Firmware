@@ -395,7 +395,6 @@ static void lcd_menu_first_run_material_load_heatup()
         for(uint8_t e=0; e<EXTRUDERS; e++)
             volume_to_filament_length[e] = 1.0;//Set the extrusion to 1mm per given value, so we can move the filament a set distance.
 
-        plan_set_e_position(current_position[E_AXIS], true);
         currentMenu = lcd_menu_first_run_material_load_insert;
         temp = target;
     }
