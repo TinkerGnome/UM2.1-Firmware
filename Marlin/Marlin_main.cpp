@@ -502,14 +502,7 @@ void setup()
 
   for (uint8_t e=0; e<EXTRUDERS; ++e)
   {
-      SET_TOOLCHANGE_RETRACT(e);
-      SET_EXTRUDER_RETRACT(e);
       retract_recover_feedrate[e] = retract_feedrate;
-#if (EXTRUDERS > 1)
-      retract_recover_length[e] = toolchange_retractlen[e] / volume_to_filament_length[e];
-#else
-      retract_recover_length[e] = end_of_print_retraction / volume_to_filament_length[e];
-#endif
   }
 
   #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1

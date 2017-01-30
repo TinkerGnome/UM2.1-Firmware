@@ -84,13 +84,20 @@ void abortPrint(bool bQuickstop)
     float minTemp = get_extrude_min_temp();
     set_extrude_min_temp(0.0f);
 
+#if EXTRUDERS > 1
+    if (!bQuickstop && active_extruder)
+    {
+        switch_extruder(0, true);
+    }
+#endif // EXTRUDERS
+
     // set up the end of print retraction
     if ((primed & ENDOFPRINT_RETRACT) && (primed & (EXTRUDER_PRIMED << active_extruder)))
     {
 #if EXTRUDERS > 1
         if (!TOOLCHANGE_RETRACTED(active_extruder))
         {
-            // perform tool change retraction
+            // add tool change retraction
             float retractlen = toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
             if (EXTRUDER_RETRACTED(active_extruder))
             {
@@ -100,16 +107,13 @@ void abortPrint(bool bQuickstop)
                     retractlen = 0.0f;
                 }
             }
+            SET_TOOLCHANGE_RETRACT(active_extruder);
+            toolchange_recover_length[active_extruder] = retractlen;
+
             // perform end-of-print retract
             plan_set_e_position(retractlen, true);
             current_position[E_AXIS] = 0.0f;
             plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], toolchange_retractfeedrate[active_extruder]/60, active_extruder);
-        }
-        else
-        {
-            // already retracted
-            current_position[E_AXIS] = 0.0f;
-            plan_set_e_position(current_position[E_AXIS], true);
         }
 #else
         char buffer[32];
@@ -128,10 +132,6 @@ void abortPrint(bool bQuickstop)
     doCooldown();
 
 #if EXTRUDERS > 1
-    if (!bQuickstop && active_extruder)
-    {
-        switch_extruder(0, true);
-    }
     // move to a safe y position in dual mode
     CommandBuffer::move2SafeYPos();
 #endif // EXTRUDERS
@@ -148,6 +148,9 @@ void abortPrint(bool bQuickstop)
     // finish all queued commands
     cmd_synchronize();
     finishAndDisableSteppers();
+    current_position[E_AXIS] = 0.0f;
+    plan_set_e_position(current_position[E_AXIS], true);
+
     stoptime = millis();
     lifetime_stats_print_end();
 
@@ -276,6 +279,8 @@ static void doStartPrint()
 
             CLEAR_TOOLCHANGE_RETRACT(e);
             CLEAR_EXTRUDER_RETRACT(e);
+            retract_recover_length[e] = 0.0f;
+            toolchange_recover_length[e] = 0.0f;
 
             // retract
             current_position[E_AXIS] = 0.0;
