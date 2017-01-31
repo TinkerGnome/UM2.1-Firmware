@@ -12,7 +12,7 @@
 #define FILENAME_T1 "T1"
 #define FILENAME_WIPE "wipe"
 
-#define TOOLCHANGE_STARTX 171
+#define TOOLCHANGE_DISTANCEX 55
 #define TOOLCHANGE_STARTY DUAL_Y_MIN_POS
 #define WIPE_STARTX 45
 #define WIPE_DISTANCEX 35
@@ -188,11 +188,11 @@ void CommandBuffer::processT0(bool bRetract, bool bWipe)
         }
         if (bRetract)
         {
-            toolchange_retract(TOOLCHANGE_STARTX, ypos, 200, 1);
+            toolchange_retract(dock_position[X_AXIS] - TOOLCHANGE_DISTANCEX, ypos, 200, 1);
         }
         else
         {
-            CommandBuffer::moveHead(TOOLCHANGE_STARTX, ypos, 200);
+            CommandBuffer::moveHead(dock_position[X_AXIS] - TOOLCHANGE_DISTANCEX, ypos, 200);
         }
         CommandBuffer::moveHead(current_position[X_AXIS], dock_position[Y_AXIS], 100);
         CommandBuffer::moveHead(dock_position[X_AXIS], current_position[Y_AXIS], 50);
@@ -212,11 +212,11 @@ void CommandBuffer::processT1(bool bRetract, bool bWipe)
 #endif // SDSUPPORT
     {
         CommandBuffer::move2dock(bRetract);
-        CommandBuffer::moveHead(TOOLCHANGE_STARTX, dock_position[Y_AXIS], 50);
+        CommandBuffer::moveHead(dock_position[X_AXIS] - TOOLCHANGE_DISTANCEX, dock_position[Y_AXIS], 50);
 
         if (!bWipe || !bRetract)
         {
-            CommandBuffer::moveHead(TOOLCHANGE_STARTX, TOOLCHANGE_STARTY, 200);
+            CommandBuffer::moveHead(dock_position[X_AXIS] - TOOLCHANGE_DISTANCEX, TOOLCHANGE_STARTY, 200);
         }
         idle();
 	}

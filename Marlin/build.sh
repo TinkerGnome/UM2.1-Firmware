@@ -8,7 +8,7 @@
 #############################
 
 ##Which version name are we appending to the final archive
-export BUILD_NAME=17.01.2
+export BUILD_NAME=17.01.3
 
 #############################
 # Actual build script
@@ -30,15 +30,18 @@ cd "$SCRIPT_DIR"
 # Build the required firmwares
 #############################
 
-if [ -d "C:/arduino-1.0.3" ]; then
+if [ -d "D:/arduino-1.8.1" ]; then
+	ARDUINO_PATH=D:/arduino-1.8.1
+	ARDUINO_VERSION=181
+elif [ -d "D:/Arduino" ]; then
+	ARDUINO_PATH=D:/Arduino
+	ARDUINO_VERSION=165
+elif [ -d "C:/arduino-1.0.3" ]; then
 	ARDUINO_PATH=C:/arduino-1.0.3
 	ARDUINO_VERSION=103
 elif [ -d "/Applications/Arduino.app/Contents/Resources/Java" ]; then
 	ARDUINO_PATH=/Applications/Arduino.app/Contents/Resources/Java
 	ARDUINO_VERSION=105
-elif [ -d "D:/Arduino" ]; then
-	ARDUINO_PATH=D:/Arduino
-	ARDUINO_VERSION=165
 else
 	ARDUINO_PATH=/usr/share/arduino
 	ARDUINO_VERSION=105
