@@ -7,22 +7,25 @@
 #include "UltiLCD2_low_lib.h"
 #include "UltiLCD2_menu_print.h" // use lcd_cache as char buffer
 
-#define CONFIG_DIR  "config"
-#define FILENAME_T0 "T0"
-#define FILENAME_T1 "T1"
-#define FILENAME_WIPE "wipe"
-
-#define TOOLCHANGE_DISTANCEX 55
-#define TOOLCHANGE_STARTY DUAL_Y_MIN_POS
-#define WIPE_STARTX 45
-#define WIPE_DISTANCEX 35
-#define WIPE_DISTANCEY 4
 
 CommandBuffer cmdBuffer;
 
 #if (EXTRUDERS > 1)
 
+#define TOOLCHANGE_DISTANCEX 58.0f
+#define TOOLCHANGE_DISTANCEY 2.0f
+#define TOOLCHANGE_STARTY DUAL_Y_MIN_POS
+#define WIPE_STARTX 45.0f
+#define WIPE_DISTANCEX 33.0f
+#define WIPE_DISTANCEY 4.0f
+
 #if defined(TCSDSCRIPT)
+
+#define CONFIG_DIR  "config"
+#define FILENAME_T0 "T0"
+#define FILENAME_T1 "T1"
+#define FILENAME_WIPE "wipe"
+
 CommandBuffer::~CommandBuffer()
 {
     deleteScript(t0);
@@ -164,7 +167,6 @@ static void toolchange_retract(float x, float y, int feedrate, uint8_t e)
         SET_TOOLCHANGE_RETRACT(e);
 #endif // FWRETRACT
         current_position[E_AXIS] -= toolchange_recover_length[e];
-        //relative_e_move(-length, toolchange_retractfeedrate[e]/60, e);
     }
     current_position[X_AXIS] = x;
     current_position[Y_AXIS] = y;
@@ -177,6 +179,10 @@ void CommandBuffer::processT0(bool bRetract, bool bWipe)
     if (t0)
     {
         processScript(t0);
+        if (bRetract)
+        {
+            toolchange_retract(current_position[X_AXIS], current_position[Y_AXIS], toolchange_retractfeedrate[1]/60, 1);
+        }
     }
     else
 #endif // SDSUPPORT
@@ -194,11 +200,14 @@ void CommandBuffer::processT0(bool bRetract, bool bWipe)
         {
             CommandBuffer::moveHead(dock_position[X_AXIS] - TOOLCHANGE_DISTANCEX, ypos, 200);
         }
-        CommandBuffer::moveHead(current_position[X_AXIS], dock_position[Y_AXIS], 100);
-        CommandBuffer::moveHead(dock_position[X_AXIS], current_position[Y_AXIS], 50);
+        CommandBuffer::moveHead(current_position[X_AXIS], dock_position[Y_AXIS]+0.75f, 150);
+        CommandBuffer::moveHead(dock_position[X_AXIS], dock_position[Y_AXIS]+3.0f, 100);
         CommandBuffer::moveHead(current_position[X_AXIS], TOOLCHANGE_STARTY, 100);
-        CommandBuffer::moveHead(wipe_position[X_AXIS], current_position[Y_AXIS], 200);
-	}
+        if (!bWipe && !bRetract)
+        {
+            CommandBuffer::moveHead(wipe_position[X_AXIS], current_position[Y_AXIS], 200);
+        }
+    }
 }
 
 void CommandBuffer::processT1(bool bRetract, bool bWipe)
@@ -207,18 +216,21 @@ void CommandBuffer::processT1(bool bRetract, bool bWipe)
     if (t1)
     {
         processScript(t1);
+        if (bRetract)
+        {
+            toolchange_retract(current_position[X_AXIS], current_position[Y_AXIS], toolchange_retractfeedrate[0]/60, 0);
+        }
     }
     else
 #endif // SDSUPPORT
     {
         CommandBuffer::move2dock(bRetract);
-        CommandBuffer::moveHead(dock_position[X_AXIS] - TOOLCHANGE_DISTANCEX, dock_position[Y_AXIS], 50);
+        CommandBuffer::moveHead(dock_position[X_AXIS] - TOOLCHANGE_DISTANCEX, dock_position[Y_AXIS] + TOOLCHANGE_DISTANCEY, 100);
 
-        if (!bWipe || !bRetract)
+        if (!bWipe && !bRetract)
         {
-            CommandBuffer::moveHead(dock_position[X_AXIS] - TOOLCHANGE_DISTANCEX, TOOLCHANGE_STARTY, 200);
+            CommandBuffer::moveHead(wipe_position[X_AXIS], TOOLCHANGE_STARTY, 200);
         }
-        idle();
 	}
 }
 
@@ -240,7 +252,6 @@ void CommandBuffer::processWipe(const uint8_t printState)
     relative_e_move(length*0.8, toolchange_retractfeedrate[active_extruder]/60, active_extruder);
 
     // prime nozzle
-//    relative_e_move((length*0.2)+toolchange_prime[active_extruder]/volume_to_filament_length[active_extruder], (PRIMING_MM3_PER_SEC * volume_to_filament_length[active_extruder]), active_extruder);
     relative_e_move((length*0.2)+toolchange_prime[active_extruder]/volume_to_filament_length[active_extruder], 0.5f, active_extruder);
     primed |= (EXTRUDER_PRIMED << active_extruder);
     primed |= ENDOFPRINT_RETRACT;
@@ -285,16 +296,12 @@ void CommandBuffer::processWipe(const uint8_t printState)
         }
 
         // snip move
-        CommandBuffer::moveHead(current_position[X_AXIS], current_position[Y_AXIS]+WIPE_DISTANCEY, 150);
+        CommandBuffer::moveHead(current_position[X_AXIS], current_position[Y_AXIS]+WIPE_DISTANCEY, 125);
         // diagonal move
-        CommandBuffer::moveHead(current_position[X_AXIS]+WIPE_DISTANCEY, TOOLCHANGE_STARTY, 125);
+        CommandBuffer::moveHead(current_position[X_AXIS]+WIPE_DISTANCEY, current_position[Y_AXIS]+WIPE_DISTANCEY, 125);
+        // back to start position
+        CommandBuffer::moveHead(wipe_position[X_AXIS], TOOLCHANGE_STARTY, 200);
 	}
-    // small retract after wipe
-    // relative_e_move(length*-0.1, toolchange_retractfeedrate[active_extruder]/60, active_extruder);
-#ifdef FWRETRACT
-    // retract_recover_length[active_extruder] = 0.5*length;
-    // SET_EXTRUDER_RETRACT(active_extruder);
-#endif // FWRETRACT
 }
 #endif // EXTRUDERS
 
@@ -306,6 +313,7 @@ void CommandBuffer::moveHead(float x, float y, int feedrate)
     plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], feedrate, active_extruder);
 }
 
+#if EXTRUDERS > 1
 void CommandBuffer::move2dock(bool bRetract)
 {
     if (current_position[Y_AXIS] < TOOLCHANGE_STARTY)
@@ -320,9 +328,9 @@ void CommandBuffer::move2dock(bool bRetract)
     {
         CommandBuffer::moveHead(dock_position[X_AXIS], TOOLCHANGE_STARTY, 200);
     }
-    idle();
     CommandBuffer::moveHead(dock_position[X_AXIS], dock_position[Y_AXIS], 100);
 }
+#endif // EXTRUDERS
 
 void CommandBuffer::move2heatup()
 {
