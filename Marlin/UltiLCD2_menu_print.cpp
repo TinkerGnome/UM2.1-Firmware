@@ -384,7 +384,7 @@ void lcd_sd_menu_details_callback(uint8_t nr)
         {
             if (LCD_CACHE_TYPE(idx) == 1)
             {
-                lcd_lib_draw_string_centerP(53, PSTR("Folder"));
+                lcd_lib_draw_string_centerP(BOTTOM_MENU_YPOS, PSTR("Folder"));
             }else{
                 char buffer[64];
                 if (LCD_DETAIL_CACHE_ID() != nr)
@@ -487,9 +487,9 @@ void lcd_sd_menu_details_callback(uint8_t nr)
                         }
 #endif
                     }
-                    lcd_lib_draw_string(3, 53, buffer);
+                    lcd_lib_draw_string(3, BOTTOM_MENU_YPOS, buffer);
                 }else{
-                    lcd_lib_draw_stringP(3, 53, PSTR("No info available"));
+                    lcd_lib_draw_stringP(3, BOTTOM_MENU_YPOS, PSTR("No info available"));
                 }
             }
         }
@@ -1159,7 +1159,7 @@ static void tune_item_details_callback(uint8_t nr)
     }
     else
         return;
-    lcd_lib_draw_string(5, 53, card.longFilename);
+    lcd_lib_draw_string(5, BOTTOM_MENU_YPOS, card.longFilename);
 }
 
 static void lcd_menu_print_tune_heatup_nozzle(uint8_t e, int16_t max_temp)
@@ -1184,7 +1184,7 @@ static void lcd_menu_print_tune_heatup_nozzle(uint8_t e, int16_t max_temp)
 #else
     lcd_lib_draw_string_centerP(20, PSTR("Nozzle temperature:"));
 #endif
-    lcd_lib_draw_string_centerP(53, PSTR("Click to return"));
+    lcd_lib_draw_string_centerP(BOTTOM_MENU_YPOS, PSTR("Click to return"));
     char * c = int_to_string(int(dsp_temperature[e]), buffer, PSTR("C/"));
     c = int_to_string(int(degTargetHotend(e)), c, PSTR("C"));
     if (target_temperature_diff[e])
@@ -1213,7 +1213,7 @@ static void lcd_menu_print_tune_heatup_bed()
     char buffer[24];
     lcd_lib_draw_string_centerP(10, PSTR("Temperature"));
     lcd_lib_draw_string_centerP(20, PSTR("Buildplate"));
-    lcd_lib_draw_string_centerP(53, PSTR("Click to return"));
+    lcd_lib_draw_string_centerP(BOTTOM_MENU_YPOS, PSTR("Click to return"));
     char * c = int_to_string(int(dsp_temperature_bed), buffer, PSTR("C/"));
     c = int_to_string(int(degTargetBed()), c, PSTR("C"));
     if (target_temperature_bed_diff)
@@ -1328,7 +1328,7 @@ static void lcd_retraction_details(uint8_t nr)
         float_to_string(retract_length, buffer, PSTR("mm"));
     else if(nr == 2)
         int_to_string(retract_feedrate / 60 + 0.5, buffer, PSTR("mm/sec"));
-    lcd_lib_draw_string(5, 53, buffer);
+    lcd_lib_draw_string(5, BOTTOM_MENU_YPOS, buffer);
 }
 
 static void lcd_menu_print_tune_retraction()

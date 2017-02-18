@@ -212,8 +212,9 @@ SRC = wiring.c hooks.c \
 	wiring_pulse.c \
 	wiring_shift.c WInterrupts.c
 CXXSRC = UltiLCD2.cpp UltiLCD2_gfx.cpp UltiLCD2_hi_lib.cpp UltiLCD2_low_lib.cpp \
-	UltiLCD2_menu_first_run.cpp UltiLCD2_menu_maintenance.cpp UltiLCD2_menu_material.cpp \
-	UltiLCD2_menu_print.cpp UltiLCD2_menu_dual.cpp UltiLCD2_menu_utils.cpp lifetime_stats.cpp
+	UltiLCD2_menu_first_run.cpp UltiLCD2_menu_maintenance.cpp \
+	UltiLCD2_menu_material.cpp UltiLCD2_menu_print.cpp UltiLCD2_menu_dual.cpp \
+	UltiLCD2_menu_utils.cpp powerbudget.cpp lifetime_stats.cpp
 CXXSRC += machinesettings.cpp new.cpp
 CXXSRC += commandbuffer.cpp ConfigurationDual.cpp	
 CXXSRC += WMath.cpp WString.cpp Print.cpp Marlin_main.cpp	\

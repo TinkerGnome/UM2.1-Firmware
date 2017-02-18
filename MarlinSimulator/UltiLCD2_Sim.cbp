@@ -107,6 +107,8 @@
 		<Unit filename="../Marlin/pins.h" />
 		<Unit filename="../Marlin/planner.cpp" />
 		<Unit filename="../Marlin/planner.h" />
+		<Unit filename="../Marlin/powerbudget.cpp" />
+		<Unit filename="../Marlin/powerbudget.h" />
 		<Unit filename="../Marlin/speed_lookuptable.h" />
 		<Unit filename="../Marlin/stepper.cpp" />
 		<Unit filename="../Marlin/stepper.h" />

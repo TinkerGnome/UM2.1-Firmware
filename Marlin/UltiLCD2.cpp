@@ -3,6 +3,7 @@
 #include "UltiLCD2.h"
 #include "UltiLCD2_hi_lib.h"
 #include "UltiLCD2_gfx.h"
+#include "UltiLCD2_menu_utils.h"
 #include "UltiLCD2_menu_material.h"
 #include "UltiLCD2_menu_print.h"
 #include "UltiLCD2_menu_first_run.h"
@@ -171,7 +172,7 @@ void lcd_menu_startup()
         //lcd_lib_clear_gfx(0, 22, ultimakerTextOutlineGfx);
         lcd_lib_draw_gfx(0, 22, ultimakerTextGfx);
     }
-    lcd_lib_draw_string_centerP(53, PSTR(STRING_CONFIG_H_AUTHOR));
+    lcd_lib_draw_string_centerP(BOTTOM_MENU_YPOS, PSTR(STRING_CONFIG_H_AUTHOR));
     lcd_lib_update_screen();
 
 #ifndef DUAL_FAN

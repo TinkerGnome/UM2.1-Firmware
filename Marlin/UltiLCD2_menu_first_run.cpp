@@ -11,6 +11,7 @@
 #include "UltiLCD2_menu_material.h"
 #include "UltiLCD2_menu_first_run.h"
 #include "UltiLCD2_menu_print.h"
+#include "UltiLCD2_menu_utils.h"
 #include "commandbuffer.h"
 #if EXTRUDERS > 1
 #include "ConfigurationDual.h"
@@ -344,7 +345,7 @@ static char* lcd_material_select_callback(uint8_t nr)
 
 static void lcd_material_select_details_callback(uint8_t nr)
 {
-    lcd_lib_draw_stringP(5, 53, PSTR("Select the material"));
+    lcd_lib_draw_stringP(5, BOTTOM_MENU_YPOS, PSTR("Select the material"));
 }
 
 static void lcd_menu_first_run_material_select_material()

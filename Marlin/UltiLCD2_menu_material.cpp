@@ -274,7 +274,7 @@ static void lcd_menu_change_material_select_material_details_callback(uint8_t nr
         c += 5;
         c = int_to_string(eeprom_read_byte(EEPROM_MATERIAL_FAN_SPEED_OFFSET(nr)), c, PSTR("%"));
     }
-    lcd_lib_draw_string(5, 53, buffer);
+    lcd_lib_draw_string(5, BOTTOM_MENU_YPOS, buffer);
 }
 
 static void lcd_menu_change_material_select_material()
@@ -740,16 +740,16 @@ static void lcd_material_select_details_callback(uint8_t nr)
             c += 5;
             c = int_to_string(eeprom_read_byte(EEPROM_MATERIAL_FAN_SPEED_OFFSET(nr)), c, PSTR("%"));
         }
-        lcd_lib_draw_string(5, 53, buffer);
+        lcd_lib_draw_string(5, BOTTOM_MENU_YPOS, buffer);
     }else if (nr == count + 1)
     {
-        lcd_lib_draw_string_centerP(53, PSTR("Modify the settings"));
+        lcd_lib_draw_string_centerP(BOTTOM_MENU_YPOS, PSTR("Modify the settings"));
     }else if (nr == count + 2)
     {
-        lcd_lib_draw_string_centerP(53, PSTR("Saves all materials"));
+        lcd_lib_draw_string_centerP(BOTTOM_MENU_YPOS, PSTR("Saves all materials"));
     }else if (nr == count + 3)
     {
-        lcd_lib_draw_string_centerP(53, PSTR("Loads all materials"));
+        lcd_lib_draw_string_centerP(BOTTOM_MENU_YPOS, PSTR("Loads all materials"));
     }
 }
 
@@ -870,7 +870,7 @@ static void lcd_material_settings_details_callback(uint8_t nr)
         int_to_string(material[menu_extruder].change_preheat_wait_time, buffer, PSTR("Sec"));
 #endif
     }
-    lcd_lib_draw_string(5, 53, buffer);
+    lcd_lib_draw_string(5, BOTTOM_MENU_YPOS, buffer);
 }
 
 static void lcd_menu_material_settings()
@@ -939,7 +939,7 @@ static void lcd_material_settings_temperature_details_callback(uint8_t nr)
 #else
     int_to_string(material[active_extruder].temperature[nr - 1], buffer, PSTR("C"));
 #endif
-    lcd_lib_draw_string(5, 53, buffer);
+    lcd_lib_draw_string(5, BOTTOM_MENU_YPOS, buffer);
 }
 
 static void lcd_menu_material_temperature_settings()
@@ -985,7 +985,7 @@ static void lcd_material_settings_retraction_details_callback(uint8_t nr)
         return;
     char* c = float_to_string(material[active_extruder].retraction_length[nr - 1], buffer, PSTR("mm "));
     int_to_string(material[active_extruder].retraction_speed[nr - 1] / 60.0 + 0.5, c, PSTR("mm/s"));
-    lcd_lib_draw_string(5, 53, buffer);
+    lcd_lib_draw_string(5, BOTTOM_MENU_YPOS, buffer);
 }
 
 static void lcd_menu_material_retraction_settings()
@@ -1025,7 +1025,7 @@ static void lcd_retraction_details_per_nozzle(uint8_t nr)
         float_to_string(material[active_extruder].retraction_length[nozzle_select_index], buffer, PSTR("mm"));
     else if(nr == 2)
         int_to_string(material[active_extruder].retraction_speed[nozzle_select_index] / 60 + 0.5, buffer, PSTR("mm/sec"));
-    lcd_lib_draw_string(5, 53, buffer);
+    lcd_lib_draw_string(5, BOTTOM_MENU_YPOS, buffer);
 }
 
 static void lcd_menu_material_retraction_settings_per_nozzle()

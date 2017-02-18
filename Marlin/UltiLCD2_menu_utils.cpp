@@ -286,13 +286,46 @@ void LCDMenu::set_active(menuItemCallback_t getMenuItem, int8_t index)
     }
 }
 
-bool lcd_tune_value(int8_t &value, int8_t _min, int8_t _max)
+bool lcd_tune_value(int &value, int _min, int _max)
 {
     if (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM != 0)
     {
         lcd_lib_tick();
         value = constrain(value + (lcd_lib_encoder_pos / ENCODER_TICKS_PER_SCROLL_MENU_ITEM), _min, _max);
         lcd_lib_encoder_pos = 0;
+        return true;
+    }
+    return false;
+}
+
+bool lcd_tune_value(uint16_t &value, uint16_t _min, uint16_t _max)
+{
+    int iValue = value;
+    if (lcd_tune_value(iValue, _min, _max))
+    {
+        value = iValue;
+        return true;
+    }
+    return false;
+}
+
+bool lcd_tune_value(uint8_t &value, uint8_t _min, uint8_t _max)
+{
+    int iValue = value;
+    if (lcd_tune_value(iValue, _min, _max))
+    {
+        value = iValue;
+        return true;
+    }
+    return false;
+}
+
+bool lcd_tune_value(int8_t &value, int8_t _min, int8_t _max)
+{
+    int iValue = value;
+    if (lcd_tune_value(iValue, _min, _max))
+    {
+        value = iValue;
         return true;
     }
     return false;
