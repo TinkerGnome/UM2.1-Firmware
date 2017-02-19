@@ -839,7 +839,7 @@ static void lcd_menu_print_printing()
         if (isinf(totalTimeSmoothSec))
             totalTimeSmoothSec = totalTimeMs;
 
-        if (LCD_DETAIL_CACHE_TIME() == 0 && printTimeSec < 120)
+        if (LCD_DETAIL_CACHE_TIME() == 0 && printTimeSec < 240)
         {
             totalTimeSmoothSec = totalTimeMs / 1000;
             // lcd_lib_draw_stringP(5, 10, PSTR("Time left unknown"));
@@ -861,7 +861,7 @@ static void lcd_menu_print_printing()
             {
                 timeLeftSec = 1;
             }
-            else
+            else if ((progress > 2) && (printTimeSec > 240))
             {
                 c = strcpy_P(buffer, PSTR("Time left "));
                 c += 10;
