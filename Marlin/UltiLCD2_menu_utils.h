@@ -33,7 +33,7 @@
 #define LCD_CHAR_MARGIN_RIGHT 4
 #define LCD_CHAR_SPACING 6
 #define LCD_CHAR_HEIGHT 7
-#define BOTTOM_MENU_YPOS 53
+#define BOTTOM_MENU_YPOS 54
 
 
 #define UNIT_FLOW "mm\x1D/s"
@@ -135,7 +135,10 @@ private:
 
 extern LCDMenu menu;
 
+bool lcd_tune_value(int &value, int _min, int _max);
 bool lcd_tune_value(int8_t &value, int8_t _min, int8_t _max);
+bool lcd_tune_value(uint8_t &value, uint8_t _min, uint8_t _max);
+bool lcd_tune_value(uint16_t &value, uint16_t _min, uint16_t _max);
 bool lcd_tune_value(float &value, float _min, float _max, float _step);
 
 #endif

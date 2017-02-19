@@ -10,7 +10,6 @@ class CommandBuffer
     static void homeHead();
     static void homeBed();
     static void homeAll();
-    static void move2dock(bool bRetract);
     static void move2heatup();
     static void move2front();
     static void moveHead(float x, float y, int feedrate);
@@ -18,6 +17,7 @@ class CommandBuffer
 
 #if EXTRUDERS > 1
     static void move2SafeYPos();
+    static void move2dock(bool bRetract);
     void processT0(bool bRetract, bool bWipe);
     void processT1(bool bRetract, bool bWipe);
     void processWipe(const uint8_t printState);

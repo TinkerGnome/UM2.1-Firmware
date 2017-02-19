@@ -8,5 +8,6 @@ extern const uint8_t ultimakerTextGfx[] PROGMEM;
 //extern const uint8_t backArrowGfx[] PROGMEM;
 //extern const uint8_t specialStartupGfx[] PROGMEM;
 extern const uint8_t thermometerGfx[] PROGMEM;
+extern const uint8_t backGfx[] PROGMEM;
 
 #endif//ULTILCD2_GFX_H
