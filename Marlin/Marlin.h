@@ -193,6 +193,7 @@ uint8_t commands_queued();
 void cmd_synchronize();
 void prepare_arc_move(char isclockwise);
 void clamp_to_software_endstops(float target[3]);
+void set_current_position(uint8_t axis, const float &pos);
 
 #ifdef FAST_PWM_FAN
 void setPwmFrequency(uint8_t pin, int val);

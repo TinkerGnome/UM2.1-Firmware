@@ -107,6 +107,9 @@ void lcd_update()
 			strcat_P(buffer, PSTR("ER07"));
             break;
 		default:
+		    char strReason[8];
+		    int_to_string(StoppedReason(), strReason);
+            lcd_lib_draw_string_center(20, strReason);
 			strcat_P(buffer, PSTR("support"));
         }
         lcd_lib_draw_string_centerP(40, PSTR("Go to:"));

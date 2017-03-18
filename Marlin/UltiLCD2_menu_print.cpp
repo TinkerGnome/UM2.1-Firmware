@@ -204,6 +204,11 @@ static void doStartPrint()
 
     // since we are going to prime the nozzle, forget about any G10/G11 retractions that happened at end of previous print
     reset_retractstate();
+    for (uint8_t e=0; e<EXTRUDERS; ++e)
+    {
+        CLEAR_EXTRUDER_RETRACT(e);
+        retract_recover_length[e] = 0.0f;
+    }
 
     for(int8_t e = EXTRUDERS-1; (e>=0) && (printing_state < PRINT_STATE_ABORT); --e)
     {
@@ -211,8 +216,6 @@ static void doStartPrint()
         // clear reheat flag
         retract_state &= ~(EXTRUDER_PREHEAT << e);
 #endif
-        CLEAR_TOOLCHANGE_RETRACT(e);
-        toolchange_recover_length[e] = 0.0f;
 
         if (!LCD_DETAIL_CACHE_MATERIAL(e))
         {
@@ -249,8 +252,6 @@ static void doStartPrint()
         }
         else
         {
-            uint8_t old_printstate = printing_state;
-            printing_state = PRINT_STATE_TOOLCHANGE;
             // move to heatup pos
             CommandBuffer::move2heatup();
 
@@ -262,19 +263,14 @@ static void doStartPrint()
                 // execute prime and wipe script
                 cmdBuffer.processWipe(printing_state);
             }
-
-            if (printing_state < PRINT_STATE_ABORT)
-            {
-                printing_state = old_printstate;
-            }
         }
         if (!IS_WIPE_ENABLED && (printing_state < PRINT_STATE_ABORT))
         {
-            // undo the end-of-print retraction
-            plan_set_e_position(current_position[E_AXIS] - (toolchange_retractlen[e] / volume_to_filament_length[e]), true);
-            plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], END_OF_PRINT_RECOVERY_SPEED, e);
+            // undo the tool change retraction
+            float length = CommandBuffer::preparePriming(e) + PRIMING_MM3;
             // perform additional priming
-            plan_set_e_position(current_position[E_AXIS]-PRIMING_MM3, true);
+            current_position[E_AXIS] = 0.0;
+            plan_set_e_position(-length, true);
             plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], (PRIMING_MM3_PER_SEC * volume_to_filament_length[e]), e);
 
             CLEAR_TOOLCHANGE_RETRACT(e);
@@ -283,10 +279,7 @@ static void doStartPrint()
             toolchange_recover_length[e] = 0.0f;
 
             // retract
-            current_position[E_AXIS] = 0.0;
-            plan_set_e_position(0, true);
-            enquecommand_P(PSTR("G1 E0"));
-            enquecommand_P(PSTR("G10"));
+            process_command_P(PSTR("G10"));
         }
     #else
         // undo the end-of-print retraction
@@ -297,8 +290,9 @@ static void doStartPrint()
         plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], (PRIMING_MM3_PER_SEC * volume_to_filament_length[e]), e);
     #endif
 
-        // finish priming moves
-        st_synchronize();
+        // finish priming moves and reset e-position
+        set_current_position(E_AXIS, 0.0f);
+        plan_set_e_position(current_position[E_AXIS], true);
 
         // note that we have primed, so that we know to de-prime at the end
         primed |= (EXTRUDER_PRIMED << e);

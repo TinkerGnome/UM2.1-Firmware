@@ -18,6 +18,7 @@ class CommandBuffer
 #if EXTRUDERS > 1
     static void move2SafeYPos();
     static void move2dock(bool bRetract);
+    static float preparePriming(uint8_t e);
     void processT0(bool bRetract, bool bWipe);
     void processT1(bool bRetract, bool bWipe);
     void processWipe(const uint8_t printState);

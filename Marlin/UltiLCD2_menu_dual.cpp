@@ -824,7 +824,7 @@ static void lcd_menu_wipeposition()
     }
     if (!(flags & MENU_STATUSLINE))
     {
-        lcd_lib_draw_string_leftP(5, PSTR("Wipe position"));
+        lcd_lib_draw_string_leftP(5, PSTR("Prime/Wipe position"));
     }
 
     lcd_lib_update_screen();
@@ -1485,7 +1485,7 @@ static char* lcd_dual_item(uint8_t nr)
     else if (nr == index++)
         strcpy_P(card.longFilename, PSTR("Docking position"));
     else if (nr == index++)
-        strcpy_P(card.longFilename, PSTR("Wipe position"));
+        strcpy_P(card.longFilename, PSTR("Prime/Wipe position"));
     else if (nr == index++)
     {
         strcpy_P(card.longFilename, PSTR("Adjust Z (nozzle "));
