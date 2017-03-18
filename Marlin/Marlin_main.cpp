@@ -311,6 +311,11 @@ void reset_retractstate()
 }
 #endif // FWRETRACT
 
+void set_current_position(uint8_t axis, const float &pos)
+{
+    destination[axis] = current_position[axis] = pos;
+}
+
 //Clear all the commands in the ASCII command buffer, to make sure we have room for abort commands.
 void clear_command_queue()
 {
@@ -503,6 +508,10 @@ void setup()
   for (uint8_t e=0; e<EXTRUDERS; ++e)
   {
       retract_recover_feedrate[e] = retract_feedrate;
+#if EXTRUDERS > 1
+      SET_TOOLCHANGE_RETRACT(e);
+      toolchange_recover_length[e] = toolchange_retractlen[e];
+#endif
   }
 
   #if defined(CONTROLLERFAN_PIN) && CONTROLLERFAN_PIN > -1

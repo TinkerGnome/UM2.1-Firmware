@@ -234,28 +234,33 @@ void CommandBuffer::processT1(bool bRetract, bool bWipe)
 	}
 }
 
-void CommandBuffer::processWipe(const uint8_t printState)
+float CommandBuffer::preparePriming(uint8_t e)
 {
 #ifdef FWRETRACT
-    float length = TOOLCHANGE_RETRACTED(active_extruder) ? toolchange_recover_length[active_extruder] : toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
-    CLEAR_TOOLCHANGE_RETRACT(active_extruder);
-    toolchange_recover_length[active_extruder] = 0.0f;
-    if (EXTRUDER_RETRACTED(active_extruder))
+    float length = TOOLCHANGE_RETRACTED(e) ? toolchange_recover_length[e] : toolchange_retractlen[e]/volume_to_filament_length[e];
+    CLEAR_TOOLCHANGE_RETRACT(e);
+    toolchange_recover_length[e] = 0.0f;
+    if (EXTRUDER_RETRACTED(e))
     {
-        length += retract_recover_length[active_extruder];
+        length += retract_recover_length[e];
     }
 #else
-    float length = toolchange_retractlen[active_extruder]/volume_to_filament_length[active_extruder];
+    float length = toolchange_retractlen[e]/volume_to_filament_length[e];
 #endif // FWRETRACT
 
     // undo the toolchange retraction
-    relative_e_move(length*0.8, toolchange_retractfeedrate[active_extruder]/60, active_extruder);
+    relative_e_move(length*0.8, toolchange_retractfeedrate[e]/60, e);
+    return (length*0.2);
+}
+
+void CommandBuffer::processWipe(const uint8_t printState)
+{
+    float length = CommandBuffer::preparePriming(active_extruder);
 
     // prime nozzle
-    relative_e_move((length*0.2)+toolchange_prime[active_extruder]/volume_to_filament_length[active_extruder], 0.5f, active_extruder);
+    relative_e_move(length+toolchange_prime[active_extruder]/volume_to_filament_length[active_extruder], 0.5f, active_extruder);
     primed |= (EXTRUDER_PRIMED << active_extruder);
     primed |= ENDOFPRINT_RETRACT;
-
     // retract before wipe
     if (!EXTRUDER_RETRACTED(active_extruder))
     {
@@ -272,12 +277,12 @@ void CommandBuffer::processWipe(const uint8_t printState)
     if (wipe)
     {
         processScript(wipe);
-        if (printing_state < PRINT_STATE_ABORT)
-        {
-            // switch fan speed back to normal
-            printing_state = printState;
-            check_axes_activity();
-        }
+		if (printing_state < PRINT_STATE_ABORT)
+		{
+			// switch fan speed back to normal
+			printing_state = printState;
+			check_axes_activity();
+		}
     }
     else
 #endif // SDSUPPORT
@@ -288,12 +293,12 @@ void CommandBuffer::processWipe(const uint8_t printState)
         // slow wipe move
         CommandBuffer::moveHead(current_position[X_AXIS]-WIPE_DISTANCEX, current_position[Y_AXIS], 40);
 
-        if (printing_state < PRINT_STATE_ABORT)
-        {
-            // switch fan speed back to normal
-            printing_state = printState;
-            check_axes_activity();
-        }
+		if (printing_state < PRINT_STATE_ABORT)
+		{
+			// switch fan speed back to normal
+			printing_state = printState;
+			check_axes_activity();
+		}
 
         // snip move
         CommandBuffer::moveHead(current_position[X_AXIS], current_position[Y_AXIS]+WIPE_DISTANCEY, 125);
