@@ -83,7 +83,7 @@ void Dual_RetrieveSettings()
     }
     if (!bValid || version < 2)
     {
-        dual_state = DUAL_ENABLED | DUAL_WIPE | DUAL_TOOLCHANGE;
+        dual_state = DUAL_ENABLED | DUAL_TOOLCHANGE;
         Dual_StoreState();
 
         for (uint8_t e=0; e<EXTRUDERS; ++e)

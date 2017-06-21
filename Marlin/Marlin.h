@@ -161,7 +161,7 @@ extern uint8_t position_state;
 
 enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
 
-
+float roundOffset(uint8_t axis, const float &offset);
 void FlushSerialRequestResend();
 void ClearToSend();
 

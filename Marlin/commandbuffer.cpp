@@ -190,7 +190,7 @@ void CommandBuffer::processT0(bool bRetract, bool bWipe)
         float ypos = min(current_position[Y_AXIS], TOOLCHANGE_STARTY);
         if ((IS_WIPE_ENABLED && current_position[X_AXIS] < wipe_position[X_AXIS]))
         {
-            ypos = TOOLCHANGE_STARTY - extruder_offset[Y_AXIS][active_extruder];
+            ypos = TOOLCHANGE_STARTY - roundOffset(Y_AXIS, extruder_offset[Y_AXIS][active_extruder]);
         }
         if (bRetract)
         {
@@ -343,7 +343,7 @@ void CommandBuffer::move2heatup()
 #if (EXTRUDERS > 1)
     if IS_DUAL_ENABLED
     {
-        x = wipe_position[X_AXIS]+extruder_offset[X_AXIS][active_extruder];
+        x = wipe_position[X_AXIS]+roundOffset(X_AXIS, extruder_offset[X_AXIS][active_extruder]);
         if (current_position[Y_AXIS] >= TOOLCHANGE_STARTY)
         {
         // y = 65.0f;
@@ -353,7 +353,7 @@ void CommandBuffer::move2heatup()
     }
     else
     {
-        x = max(5.0f, min_pos[X_AXIS] + extruder_offset[X_AXIS][active_extruder] + 5);
+        x = max(5.0f, min_pos[X_AXIS] + roundOffset(X_AXIS, extruder_offset[X_AXIS][active_extruder]) + 5);
         y = min_pos[Y_AXIS] + 10.0;
     }
 #else
@@ -366,7 +366,7 @@ void CommandBuffer::move2heatup()
 void CommandBuffer::move2front()
 {
 #if (EXTRUDERS > 1)
-    float x = IS_DUAL_ENABLED ? wipe_position[X_AXIS]+extruder_offset[X_AXIS][active_extruder] : AXIS_CENTER_POS(X_AXIS);
+    float x = IS_DUAL_ENABLED ? wipe_position[X_AXIS]+roundOffset(X_AXIS, extruder_offset[X_AXIS][active_extruder]) : AXIS_CENTER_POS(X_AXIS);
     float y = IS_DUAL_ENABLED ? int(min_pos[Y_AXIS])+DUAL_Y_MIN_POS : int(min_pos[Y_AXIS])+10;
 #else
     float x = AXIS_CENTER_POS(X_AXIS);

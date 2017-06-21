@@ -1365,7 +1365,7 @@ static void lcd_menu_print_pause()
         #if (EXTRUDERS > 1)
             char buffer_len[10];
             float_to_string(toolchange_retractlen[active_extruder], buffer_len, NULL);
-            uint16_t x = max(5, 5 + extruder_offset[X_AXIS][active_extruder]);
+            uint16_t x = max(5, 5 + roundOffset(X_AXIS, extruder_offset[X_AXIS][active_extruder]));
             uint16_t y = IS_DUAL_ENABLED ? 60 : 10;
             sprintf_P(buffer, PSTR("M601 X%u Y%u Z%u L%s"), x, y, zdiff, buffer_len);
         #else

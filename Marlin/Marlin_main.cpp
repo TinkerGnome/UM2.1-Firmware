@@ -839,6 +839,13 @@ XYZ_CONSTS_FROM_CONFIG(float, max_length,      MAX_LENGTH);
 XYZ_CONSTS_FROM_CONFIG(float, home_retract_mm, HOME_RETRACT_MM);
 XYZ_CONSTS_FROM_CONFIG(signed char, home_dir,  HOME_DIR);
 
+float roundOffset(uint8_t axis, const float &offset)
+{
+    // round offset to a multiple of a step
+    long steps = lround(offset * axis_steps_per_unit[axis]);
+    return steps / axis_steps_per_unit[axis];
+}
+
 static void axis_is_at_home(int axis) {
   min_pos[axis] =          base_min_pos(axis);// + add_homeing[axis];
   max_pos[axis] =          base_max_pos(axis);// + add_homeing[axis];
@@ -847,7 +854,7 @@ static void axis_is_at_home(int axis) {
   current_position[axis] = ((axis == Z_AXIS) && active_extruder) ? base_home_pos(axis) + add_homeing_z2 : base_home_pos(axis) + add_homeing[axis];
   if (axis <= Y_AXIS)
   {
-      current_position[axis] += extruder_offset[axis][active_extruder];
+      current_position[axis] += roundOffset(axis, extruder_offset[axis][active_extruder]);
   }
 #else
   current_position[axis] = base_home_pos(axis) + add_homeing[axis];
@@ -3212,9 +3219,9 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         memcpy(destination, current_position, sizeof(destination));
 
         // reset xy offsets
-        for(uint8_t i = 0; i < 2; ++i)
+        for(uint8_t axis = X_AXIS; axis <= Y_AXIS; ++axis)
         {
-           current_position[i] -= extruder_offset[i][active_extruder];
+           current_position[axis] -= roundOffset(axis, extruder_offset[axis][active_extruder]);
         }
 
         // calculate z offset
@@ -3274,9 +3281,9 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         }
 
         // set new extruder xy offsets
-        for(uint8_t i = 0; i < 2; ++i)
+        for(uint8_t axis = X_AXIS; axis <= Y_AXIS; ++axis)
         {
-           current_position[i] += extruder_offset[i][nextExtruder];
+           current_position[axis] += roundOffset(axis, extruder_offset[axis][nextExtruder]);
         }
 
         // Set the new active extruder
@@ -3359,11 +3366,11 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
     else
     {
         // Offset extruder (X, Y)
-        for(uint8_t i = 0; i < 2; ++i)
+        for(uint8_t axis = X_AXIS; axis <= Y_AXIS; ++axis)
         {
-           current_position[i] = current_position[i] -
-                                 extruder_offset[i][active_extruder] +
-                                 extruder_offset[i][nextExtruder];
+           current_position[axis] = current_position[axis] -
+                                    roundOffset(axis, extruder_offset[axis][active_extruder]) +
+                                    roundOffset(axis, extruder_offset[axis][nextExtruder]);
         }
         // Set the new active extruder and position
         active_extruder = nextExtruder;
